@@ -13,9 +13,12 @@ import {
 } from 'three';
 
 import * as C from 'cannon';
+import { EnemyBullet } from './enemy-bullet';
+import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
+import { angleToVector2 } from '../../utils/angle-to-vector2';
 
 export class FollowEnemy2 {
-  constructor(position, life = 15, speed = 3) {
+  constructor(position, life = 15, speed = 3, canShoot = false, damage = 10) {
     const geometry = new TorusBufferGeometry(5, 5.9, 4, 8, 6.3);
     const material = new MeshLambertMaterial({
       color: 0x555555,
@@ -34,6 +37,17 @@ export class FollowEnemy2 {
 
     this.speed = speed;
 
+    this.canShoot = canShoot;
+    this.fireDistance = 18;
+    this.fireCooldown = 20;
+    this.fireRate = 20;
+    this.bulletSpeed = 8;
+    this.damage = damage;
+
+    this.attackCooldown = 0;
+    this.attackRate = 20;
+    this.onTouchAttack = true;
+
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
 
@@ -42,6 +56,8 @@ export class FollowEnemy2 {
     this.velocity = new Vector3();
 
     this.bBox = new Box3().setFromObject(this.object);
+
+    this.bulletsToFire = 5;
   }
 
   takeDamage(damage = 1) {
@@ -49,7 +65,49 @@ export class FollowEnemy2 {
     this.takeDamageCooldown = this.takeDamageRate;
   }
 
+  canAttack() {
+    return this.attackCooldown <= 0;
+  }
+
+  canFire() {
+    return this.fireCooldown <= 0 && this.canShoot;
+  }
+
+  fire() {
+    const initialRotation = this.object.rotation.z;
+    const incrementRotation = (Math.PI * 2) / this.bulletsToFire;
+
+    let bullets = [];
+
+    for (let i = 0; i < this.bulletsToFire; i++) {
+      const bulletVel2d = angleToVector2(
+        initialRotation + incrementRotation * i
+      );
+      const bulletVel = new Vector3(bulletVel2d.x, 0, bulletVel2d.y);
+      bulletVel.normalize();
+
+      const bulletPos = this.object.position.clone().add(bulletVel);
+
+      const bullet = new EnemyBullet(
+        bulletPos,
+        bulletVel,
+        this.bulletSpeed,
+        20,
+        this.damage,
+        EnemyBulletTypes.RANDOM
+      );
+
+      bullets.push(bullet);
+    }
+
+    this.fireCooldown = this.fireRate;
+
+    return bullets;
+  }
+
   update() {
+    this.fireCooldown--;
+
     const vel = this.velocity.clone().setLength(this.speed);
     this.object.rotation.z += 0.1;
 
@@ -65,6 +123,7 @@ export class FollowEnemy2 {
     }
 
     this.takeDamageCooldown--;
+    this.attackCooldown--;
   }
 
   follow(target) {

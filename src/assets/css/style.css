@@ -24,6 +24,13 @@ in-game-ui-top {
   width: 100%;
 }
 
+in-game-map-ui {
+  position: absolute;
+  z-index: 999;
+  top: 80px;
+  left: 10px;
+}
+
 in-game-ui-bottom {
   position: absolute;
   bottom: 0;

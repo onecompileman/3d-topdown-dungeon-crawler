@@ -15,6 +15,9 @@ import {
 
 import * as C from 'cannon';
 import { angleToVector2 } from '../../utils/angle-to-vector2';
+import { EnemyBullet } from './enemy-bullet';
+import { randomArrayElement } from '../../utils/random-array-element';
+import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
 
 export class FollowEnemy3 {
   constructor(
@@ -23,7 +26,9 @@ export class FollowEnemy3 {
     speed = 3,
     scale = 0.33,
     spawns = 2,
-    spawnLevel = 3
+    spawnLevel = 3,
+    canShoot = false,
+    damage = 10
   ) {
     const geometry = new ConeBufferGeometry(5.4, 10, 3, 1, false, 0, 6.3);
     const material = new MeshLambertMaterial({
@@ -53,6 +58,19 @@ export class FollowEnemy3 {
     this.spawnLevel = spawnLevel;
     this.spawns = spawns;
 
+    this.canShoot = canShoot;
+    this.fireDistance = 18;
+    this.fireCooldown = 40;
+    this.fireRate = 40;
+    this.bulletSpeed = 12;
+    this.damage = damage;
+
+    this.attackCooldown = 0;
+    this.attackRate = 20;
+    this.onTouchAttack = true;
+
+    this.isWithinDistance = false;
+
     this.velocity = new Vector3();
 
     const object = this.object.clone();
@@ -66,8 +84,36 @@ export class FollowEnemy3 {
     this.takeDamageCooldown = this.takeDamageRate;
   }
 
+  canFire() {
+    return this.fireCooldown <= 0 && this.canShoot;
+  }
+
+  fire() {
+    const bulletVel = this.velocity.clone();
+    bulletVel.normalize();
+
+    const bulletPos = this.object.position.clone().add(bulletVel);
+
+    const bullet = new EnemyBullet(
+      bulletPos,
+      bulletVel,
+      this.bulletSpeed,
+      25,
+      this.damage,
+      EnemyBulletTypes.DESTRUCTIBLE
+    );
+
+    this.fireCooldown = this.fireRate;
+
+    return [bullet];
+  }
+
   update() {
-    const vel = this.velocity.clone().setLength(this.speed);
+    this.fireCooldown--;
+
+    const vel = this.velocity
+      .clone()
+      .setLength(this.isWithinDistance && this.canShoot ? 0 : this.speed);
 
     this.object.body.velocity.copy(new C.Vec3(vel.x, 0, vel.z));
 
@@ -85,23 +131,35 @@ export class FollowEnemy3 {
     }
 
     this.takeDamageCooldown--;
+    this.attackCooldown--;
+  }
+
+  canAttack() {
+    return this.onTouchAttack <= 0;
   }
 
   follow(target) {
+    this.isWithinDistance =
+      this.object.position.distanceTo(target) <= this.fireDistance;
+
     const follow2dTarget = new Vector2(target.x, target.z);
     const pos2d = new Vector2(this.object.position.x, this.object.position.z);
 
-    const vel = follow2dTarget.sub(pos2d);
+    let vel = follow2dTarget.sub(pos2d);
 
     const startQuaternion = new Quaternion().setFromEuler(
       this.object.rotation.clone()
     );
+
     const endQuaternion = new Quaternion().setFromEuler(
       new Euler(this.object.rotation.x, 0, -(vel.angle() + Math.PI / 2))
     );
-    startQuaternion.slerp(endQuaternion, 0.03);
+    startQuaternion.slerp(endQuaternion, 0.02);
 
     this.object.rotation.setFromQuaternion(startQuaternion);
+
+    vel.copy(angleToVector2(-this.object.rotation.z + Math.PI / 2));
+    vel.multiplyScalar(-1);
 
     this.velocity.set(vel.x, 0, vel.y);
   }
@@ -126,7 +184,8 @@ export class FollowEnemy3 {
           this.speed + 1.8,
           this.scale * 0.65,
           this.spawns * 2,
-          this.spawnLevel - 1
+          this.spawnLevel - 1,
+          randomArrayElement([false, true])
         );
 
         enemies.push(enemy);

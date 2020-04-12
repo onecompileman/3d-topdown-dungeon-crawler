@@ -8,6 +8,7 @@ import {
   LineBasicMaterial,
   Vector3,
   Vector2,
+  Box3,
 } from 'three';
 
 import * as C from 'cannon';
@@ -41,11 +42,18 @@ export class Player {
     this.dashCooldown = 0;
     this.dashCooldownRate = 40;
 
+    this.life = 100;
+
     this.isMouseDown = false;
+
+    this.takeDamageCooldown = 0;
+    this.takeDamageRate = 3;
 
     this.dir = new Vector2();
 
     this.velocity = new Vector3(0, 0, 0);
+
+    this.bBox = new Box3().setFromObject(this.object);
 
     this.onFire = (bullet) => {};
     this.onDash = () => {};
@@ -121,6 +129,11 @@ export class Player {
     });
   }
 
+  takeDamage(damage) {
+    this.life -= damage;
+    this.takeDamageCooldown = this.takeDamageRate;
+  }
+
   update(deltaTime) {
     const dashSpeedBoost = this.dashingTime > 0 ? this.dashingSpeed : 0;
 
@@ -129,6 +142,8 @@ export class Player {
     this.object.body.velocity.copy(new C.Vec3(vel.x, 0, vel.z));
 
     this.object.position.copy(this.object.body.position);
+
+    this.bBox = new Box3().setFromObject(this.object);
 
     this.dashingTime--;
     this.dashCooldown--;
@@ -142,6 +157,14 @@ export class Player {
           : (this.dashCooldown / this.dashCooldownRate) * 100;
       this.inGameUIBottom.dash = dashCooldown;
     }
+
+    if (this.takeDamageCooldown > 0) {
+      this.object.material.color.setHex(0xff2222);
+    } else {
+      this.object.material.color.setHex(0xeeeeee);
+    }
+
+    this.takeDamageCooldown--;
 
     if (this.isMouseDown && this.weaponManager.canFire()) {
       const bulletVel = this.dir.clone();

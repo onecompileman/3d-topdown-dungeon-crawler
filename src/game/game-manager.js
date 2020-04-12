@@ -30,6 +30,11 @@ import { FollowEnemy3 } from './game-objects/follow-enemy-3';
 import { FollowEnemy4 } from './game-objects/follow-enemy-4';
 import { WeaponTypes } from '../enums/weapons-types.enum';
 import { randomArrayElement } from '../utils/random-array-element';
+import { EnemyBulletTypes } from '../enums/enemy-bullet-types.enum';
+import { Tower1 } from './game-objects/tower-1';
+import { Tower2 } from './game-objects/tower-2';
+import { Tower3 } from './game-objects/tower-3';
+import { Boss } from './game-objects/boss';
 
 export class GameManager {
   constructor() {}
@@ -47,6 +52,8 @@ export class GameManager {
 
     this.initWorld();
 
+    this.initBosses();
+
     this.initEnemies();
 
     this.initClock();
@@ -62,32 +69,173 @@ export class GameManager {
     this.screenManager = new ScreenManager();
   }
 
+  initBosses() {
+    this.bosses = [];
+
+    // const boss = new Boss(new Vector3(0, 0, 0));
+
+    // this.scene.add(boss.line);
+    // boss.object.add(boss.line);
+
+    // this.scene.add(boss.object);
+
+    // this.addMeshToWorld(boss.object, 80);
+
+    // this.bosses.push(boss);
+  }
+
+  updateBosses() {
+    let bossesToAdd = [];
+
+    this.bosses = this.bosses.filter((enemy) => {
+      enemy.update();
+
+      enemy.follow(this.player.object.position.clone());
+
+      if (enemy.onTouchAttack) {
+        if (enemy.canAttack() && this.player.bBox.intersectsBox(enemy.bBox)) {
+          this.player.takeDamage(enemy.damage);
+          enemy.attackCooldown = enemy.attackRate;
+          this.screenManager.screens.inGameUITop.life = this.player.life;
+        }
+      }
+
+      if (enemy.canFire()) {
+        const bullets = enemy.fire();
+        bullets.forEach((b) => {
+          this.scene.add(b.object);
+        });
+        this.enemyBullets.push(...bullets);
+      }
+
+      if (enemy.isDead()) {
+        const particleSystem = new ParticleSystem(
+          this.scene,
+          20,
+          0.1,
+          200,
+          80,
+          enemy.object.position.clone(),
+          enemy.object.material.color.clone(),
+          0.8,
+          new Vector3(-1, -1, -1),
+          new Vector3(1, 1, 1),
+          ParticleTypes.ENEMY1_EXPLODE,
+          false
+        );
+
+        particleSystem.start();
+
+        this.particleSystems.push(particleSystem);
+
+        if (enemy.spawnsOnDeath) {
+          bossesToAdd.push(...enemy.onDeathSpawns());
+        }
+
+        this.world.remove(enemy.object.body);
+        this.scene.remove(enemy.object);
+        this.scene.remove(enemy.line);
+      }
+
+      return !enemy.isDead();
+    });
+
+    bossesToAdd.forEach((e) => {
+      e.object.add(e.line);
+      this.scene.add(e.object);
+      this.addMeshToWorld(e.object, 60);
+
+      this.bosses.push(e);
+    });
+  }
+
   initEnemies() {
     this.enemies = [];
 
-    for (let i = 0; i < 1; i++) {
-      const enemy = new FollowEnemy3(
-        new Vector3(
-          MathUtils.randFloat(-5, 5),
-          -0.5,
-          MathUtils.randFloat(-5, 5)
-        ),
-        100,
-        1.3
-      );
+    // for (let i = 0; i < 3; i++) {
+    //   const enemy = new FollowEnemy4(
+    //     new Vector3(
+    //       MathUtils.randFloat(-5, 5),
+    //       -0.5,
+    //       MathUtils.randFloat(-5, 5)
+    //     ),
+    //     20,
+    //     3,
+    //     true
+    //   );
 
-      // this.scene.add(enemy.line);
-      if (enemy.has2ndObject) {
-        this.scene.add(enemy.object2);
-      }
+    //   // this.scene.add(enemy.line);
+    //   if (enemy.has2ndObject) {
+    //     this.scene.add(enemy.object2);
+    //   }
 
-      enemy.object.add(enemy.line);
-      this.scene.add(enemy.object);
+    //   enemy.object.add(enemy.line);
+    //   this.scene.add(enemy.object);
 
-      this.addMeshToWorld(enemy.object, 20);
+    //   this.addMeshToWorld(enemy.object, 20);
 
-      this.enemies.push(enemy);
-    }
+    //   this.enemies.push(enemy);
+    // }
+
+    // for (let i = 0; i < 2; i++) {
+    //   const enemy = new Tower3(
+    //     new Vector3(
+    //       MathUtils.randFloat(-15, 15),
+    //       -0.5,
+    //       MathUtils.randFloat(-15, 15)
+    //     ),
+    //     50,
+    //     EnemyBulletTypes.RANDOM,
+    //     2,
+    //     10
+    //   );
+
+    //   if (enemy.shields) {
+    //     enemy.shields.forEach((shield) => {
+    //       console.log(shield);
+    //       this.scene.add(shield);
+    //       console.log(shield);
+    //     });
+    //   }
+
+    //   // this.scene.add(enemy.line);
+    //   if (enemy.has2ndObject) {
+    //     this.scene.add(enemy.object2);
+    //   }
+
+    //   enemy.object.add(enemy.line);
+    //   this.scene.add(enemy.object);
+
+    //   this.addMeshToWorld(enemy.object, 20);
+
+    //   this.enemies.push(enemy);
+    // }
+
+    // for (let i = 0; i < 2; i++) {
+    //   const enemy = new Tower1(
+    //     new Vector3(
+    //       MathUtils.randFloat(-5, 5),
+    //       -0.5,
+    //       MathUtils.randFloat(-5, 5)
+    //     ),
+    //     150,
+    //     EnemyBulletTypes.RANDOM,
+    //     2,
+    //     15
+    //   );
+
+    //   // this.scene.add(enemy.line);
+    //   if (enemy.has2ndObject) {
+    //     this.scene.add(enemy.object2);
+    //   }
+
+    //   enemy.object.add(enemy.line);
+    //   this.scene.add(enemy.object);
+
+    //   this.addMeshToWorld(enemy.object, 20);
+
+    //   this.enemies.push(enemy);
+    // }
   }
 
   updateEnemies() {
@@ -95,7 +243,34 @@ export class GameManager {
 
     this.enemies = this.enemies.filter((enemy) => {
       enemy.update();
+
       enemy.follow(this.player.object.position.clone());
+
+      if (enemy.onTouchAttack) {
+        if (enemy.canAttack() && this.player.bBox.intersectsBox(enemy.bBox)) {
+          this.player.takeDamage(enemy.damage);
+          enemy.attackCooldown = enemy.fireRate;
+        }
+      }
+
+      if (enemy.enemySpawn) {
+        if (enemy.canSpawnEnemy()) {
+          const e = enemy.spawnEnemy();
+          this.addMeshToWorld(e.object, 30);
+          this.scene.add(e.line);
+          e.object.add(e.line);
+          this.scene.add(e.object);
+          enemiesToAdd.push(e);
+        }
+      }
+
+      if (enemy.canFire()) {
+        const bullets = enemy.fire();
+        bullets.forEach((b) => {
+          this.scene.add(b.object);
+        });
+        this.enemyBullets.push(...bullets);
+      }
 
       if (enemy.isDead()) {
         const particleSystem = new ParticleSystem(
@@ -123,6 +298,12 @@ export class GameManager {
 
         this.world.remove(enemy.object.body);
         this.scene.remove(enemy.object);
+
+        if (enemy.shields) {
+          enemy.shields.forEach((s) => {
+            this.scene.remove(s);
+          });
+        }
 
         if (enemy.has2ndObject) {
           this.scene.remove(enemy.object2);
@@ -244,8 +425,8 @@ export class GameManager {
   }
 
   initPlatform() {
-    const geometry = new BoxBufferGeometry(30, 0.1, 30);
-    const material = new MeshBasicMaterial({ color: 0x888888 });
+    const geometry = new BoxBufferGeometry(50, 0.1, 50);
+    const material = new MeshBasicMaterial({ color: 0x777777 });
 
     this.platform = new Mesh(geometry, material);
     this.platform.receiveShadow = true;
@@ -272,6 +453,7 @@ export class GameManager {
     this.renderer.outputEncoding = sRGBEncoding;
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.gammaFactor = 2.2;
+
     // this.renderer.toneMapping = ReinhardToneMapping;
   }
 
@@ -295,9 +477,66 @@ export class GameManager {
 
   initBullets() {
     this.playerBullets = [];
+    this.enemyBullets = [];
   }
 
   updateBullets(deltaTime) {
+    this.enemyBullets = this.enemyBullets.filter((b) => {
+      b.update(deltaTime);
+
+      if (b.type === EnemyBulletTypes.DESTRUCTIBLE) {
+        this.playerBullets.forEach((pB) => {
+          if (
+            !b.isCollided &&
+            !pB.isCollided &&
+            pB.bBox.intersectsBox(b.bBox)
+          ) {
+            b.isCollided = true;
+            pB.isCollided = true;
+          }
+        });
+      }
+
+      if (!b.isCollided) {
+        if (this.player.bBox.intersectsBox(b.bBox)) {
+          // console.log('here', this.player.bBox);
+          b.isCollided = true;
+          this.player.takeDamage(b.damage);
+
+          this.screenManager.screens.inGameUITop.life = this.player.life;
+        }
+      }
+
+      if (b.isCollided) {
+        const particleSystem = new ParticleSystem(
+          this.scene,
+          9,
+          0.1,
+          200,
+          60,
+          b.object.position.clone(),
+          b.object.material.color.clone(),
+          0.3,
+          new Vector3(-1 - b.velocity.x, -1, -1 - b.velocity.z),
+          new Vector3(1, 1, 1),
+          b.type === EnemyBulletTypes.DESTRUCTIBLE
+            ? ParticleTypes.ENEMY_DESTRUCTIBLE
+            : ParticleTypes.ENEMY_INDESTRUCTIBLE,
+          false
+        );
+
+        particleSystem.start();
+
+        this.particleSystems.push(particleSystem);
+      }
+
+      if (b.isDead()) {
+        this.scene.remove(b.object);
+      }
+
+      return !b.isDead();
+    });
+
     this.playerBullets = this.playerBullets.filter((b) => {
       b.update(deltaTime);
 
@@ -312,9 +551,13 @@ export class GameManager {
           b.follow = null;
         } else {
           if (!b.follow) {
-            const enemyToFollow = randomArrayElement(this.enemies);
+            const isBoss =
+              this.enemies.length === 0 ? true : MathUtils.randInt(0, 1);
+            const enemyToFollow = isBoss
+              ? randomArrayElement(this.bosses)
+              : randomArrayElement(this.enemies);
 
-            if (b.has2ndObject) {
+            if (enemyToFollow.has2ndObject) {
               b.follow = enemyToFollow.object2.position.clone();
             } else {
               b.follow = enemyToFollow.object.position.clone();
@@ -323,8 +566,27 @@ export class GameManager {
         }
       }
 
+      this.bosses.forEach((boss) => {
+        if (!b.isCollided) {
+          if (boss.shieldEnabled && boss.shieldBbox.intersectsBox(b.bBox)) {
+            b.isCollided = true;
+          } else if (!boss.shieldEnabled && boss.bBox.intersectsBox(b.bBox)) {
+            boss.takeDamage(b.damage);
+            b.isCollided = true;
+          }
+        }
+      });
+
       // Check enemy collision
       this.enemies.forEach((e) => {
+        if (e.shields) {
+          e.shieldBbox.forEach((sB) => {
+            if (sB.intersectsBox(b.bBox)) {
+              b.isCollided = true;
+            }
+          });
+        }
+
         if (!b.isCollided && b.bBox.intersectsBox(e.bBox)) {
           b.isCollided = true;
           enemyCollided = e;
@@ -430,6 +692,7 @@ export class GameManager {
 
     this.updateParticleSystems();
     this.updateCamera();
+    this.updateBosses();
     this.updatePlayer(delta);
     this.updateBullets(delta);
     this.updateWorld();
@@ -463,7 +726,7 @@ export class GameManager {
 
     this.cameraPositionToFollow = new Vector3(
       this.player.object.position.x,
-      15,
+      17,
       this.player.object.position.z + 12
     );
   }

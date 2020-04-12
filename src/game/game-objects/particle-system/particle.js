@@ -69,6 +69,25 @@ export class Particle {
           emissiveIntensity: 1,
         });
         this.object = new Mesh(geometry, material);
+        return;
+      case ParticleTypes.ENEMY_DESTRUCTIBLE:
+        geometry = new BoxBufferGeometry(size, size, size);
+        material = new MeshLambertMaterial({
+          color: 0xff6b00,
+          emissive: 0xf24800,
+          emissiveIntensity: 1,
+        });
+        this.object = new Mesh(geometry, material);
+        return;
+      case ParticleTypes.ENEMY_INDESTRUCTIBLE:
+        geometry = new BoxBufferGeometry(size, size, size);
+        material = new MeshLambertMaterial({
+          color: 0x5b2478,
+          emissive: 0x390256,
+          emissiveIntensity: 1,
+        });
+        this.object = new Mesh(geometry, material);
+        return;
     }
   }
 

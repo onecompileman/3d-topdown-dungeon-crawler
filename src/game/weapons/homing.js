@@ -8,7 +8,7 @@ export class Homing {
     this.damage = 5.5;
 
     this.maxDistance = 30;
-    this.speed = 12;
+    this.speed = 10;
 
     this.reloadCooldown = 0;
     this.reloadCooldownRate = 100;
@@ -26,7 +26,7 @@ export class Homing {
 
   fire(position, velocity) {
     let bullets = [];
-    const spread = Math.PI / 2;
+    const spread = Math.PI * 0.75;
 
     for (let i = 0; i < this.pellets; i++) {
       const angle = new Vector2(velocity.x, velocity.z).angle();

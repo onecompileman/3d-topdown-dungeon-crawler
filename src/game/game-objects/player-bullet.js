@@ -29,6 +29,7 @@ export class PlayerBullet {
 
     this.velocity = velocity.clone();
     this.speed = speed;
+    this.startSpeed = speed / 4;
     this.maxDistance = maxDistance;
     this.distanceTravelled = 0;
     this.isCollided = false;

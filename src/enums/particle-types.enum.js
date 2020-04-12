@@ -3,4 +3,6 @@ export const ParticleTypes = Object.freeze({
   PLAYER_FIRE: 2,
   ENEMY1_EXPLODE: 3,
   HOMING_PLAYER_EXPLODE: 4,
+  ENEMY_DESTRUCTIBLE: 5,
+  ENEMY_INDESTRUCTIBLE: 6,
 });

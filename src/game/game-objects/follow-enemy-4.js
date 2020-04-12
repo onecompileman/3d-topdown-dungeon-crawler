@@ -17,9 +17,11 @@ import {
 
 import * as C from 'cannon';
 import { angleToVector2 } from '../../utils/angle-to-vector2';
+import { EnemyBullet } from './enemy-bullet';
+import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
 
 export class FollowEnemy4 {
-  constructor(position, life = 10, speed = 2) {
+  constructor(position, life = 10, speed = 2, canShoot = false, damage = 3) {
     const geometry = new SphereBufferGeometry(5.4, 4, 3, 0, 6.3, 0, 6.3);
     const material = new MeshLambertMaterial({
       color: 0xeeeeee,
@@ -53,6 +55,19 @@ export class FollowEnemy4 {
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
 
+    this.canShoot = canShoot;
+    this.fireDistance = 18;
+    this.fireCooldown = 40;
+    this.fireRate = 40;
+    this.bulletSpeed = 12;
+    this.damage = damage;
+
+    this.attackCooldown = 0;
+    this.attackRate = 20;
+    this.onTouchAttack = true;
+
+    this.isWithinDistance = false;
+
     this.life = life;
 
     this.velocity = new Vector3(0, 0, 0);
@@ -72,8 +87,40 @@ export class FollowEnemy4 {
     this.takeDamageCooldown = this.takeDamageRate;
   }
 
+  canFire() {
+    return this.fireCooldown <= 0 && this.canShoot;
+  }
+
+  fire() {
+    const bulletVel = this.velocity.clone();
+    bulletVel.normalize();
+
+    const bulletPos = this.object.position.clone().add(bulletVel);
+
+    const bullet = new EnemyBullet(
+      bulletPos,
+      bulletVel,
+      this.bulletSpeed,
+      25,
+      this.damage,
+      EnemyBulletTypes.DESTRUCTIBLE
+    );
+
+    this.fireCooldown = this.fireRate;
+
+    return [bullet];
+  }
+
+  canAttack() {
+    return this.attackCooldown <= 0;
+  }
+
   update() {
-    const vel = this.velocity.clone().setLength(this.speed);
+    this.fireCooldown--;
+
+    const vel = this.velocity
+      .clone()
+      .setLength(this.isWithinDistance && this.canShoot ? 0 : this.speed);
 
     this.object.body.velocity.copy(new C.Vec3(vel.x, 0, vel.z));
 
@@ -100,10 +147,14 @@ export class FollowEnemy4 {
       this.object2.material.color.setHex(0x000000);
     }
 
+    this.attackCooldown--;
     this.takeDamageCooldown--;
   }
 
   follow(target) {
+    this.isWithinDistance =
+      this.object.position.distanceTo(target) <= this.fireDistance;
+
     const follow2dTarget = new Vector2(target.x, target.z);
     const pos2d = new Vector2(this.object.position.x, this.object.position.z);
 
@@ -125,6 +176,10 @@ export class FollowEnemy4 {
     vel.multiplyScalar(-1);
 
     this.velocity.set(vel.x, 0, vel.y);
+  }
+
+  canFire() {
+    return this.fireCooldown <= 0 && this.canShoot;
   }
 
   isDead() {
