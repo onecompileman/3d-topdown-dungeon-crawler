@@ -18,7 +18,7 @@ import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
 import { angleToVector2 } from '../../utils/angle-to-vector2';
 
 export class FollowEnemy2 {
-  constructor(position, life = 15, speed = 3, canShoot = false, damage = 10) {
+  constructor(options) {
     const geometry = new TorusBufferGeometry(5, 5.9, 4, 8, 6.3);
     const material = new MeshLambertMaterial({
       color: 0x555555,
@@ -32,32 +32,35 @@ export class FollowEnemy2 {
     this.object.scale.set(0.13, 0.13, 0.13);
     this.object.rotation.x = -Math.PI / 2;
 
-    this.object.position.copy(position);
+    this.object.position.copy(options.position || new Vector3(0, 0, 0));
     this.object.castShadow = true;
 
-    this.speed = speed;
+    this.speed = options.speed || 3;
 
-    this.canShoot = canShoot;
-    this.fireDistance = 18;
-    this.fireCooldown = 20;
-    this.fireRate = 20;
-    this.bulletSpeed = 8;
-    this.damage = damage;
+    this.canShoot = options.canShoot || false;
+    this.fireDistance = options.fireDistance || 18;
+    this.fireCooldown = options.fireRate || 20;
+    this.fireRate = options.fireRate || 20;
+    this.bulletSpeed = options.bulletSpeed || 8;
+    this.damage = options.damage || 5;
 
     this.attackCooldown = 0;
-    this.attackRate = 20;
+    this.attackRate = options.attackRate || 20;
     this.onTouchAttack = true;
 
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
 
-    this.life = life;
+    this.life = options.life || 15;
 
     this.velocity = new Vector3();
 
     this.bBox = new Box3().setFromObject(this.object);
 
-    this.bulletsToFire = 5;
+    this.bulletsToFire = options.bulletsToFire || 2;
+
+    this.spawnLife = options.spawnLife || false;
+    this.lifeToAdd = options.lifeToAdd || 0;
   }
 
   takeDamage(damage = 1) {

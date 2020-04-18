@@ -20,16 +20,7 @@ import { randomArrayElement } from '../../utils/random-array-element';
 import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
 
 export class FollowEnemy3 {
-  constructor(
-    position,
-    life = 10,
-    speed = 3,
-    scale = 0.33,
-    spawns = 2,
-    spawnLevel = 3,
-    canShoot = false,
-    damage = 10
-  ) {
+  constructor(options) {
     const geometry = new ConeBufferGeometry(5.4, 10, 3, 1, false, 0, 6.3);
     const material = new MeshLambertMaterial({
       color: 0x000000,
@@ -39,35 +30,39 @@ export class FollowEnemy3 {
     const line = new Line(geometry, lineMaterial);
 
     this.line = line;
+    this.scale = options.scale || 1.3;
     this.object = new Mesh(geometry, material);
-    this.object.scale.set(scale, scale, scale);
+    this.object.scale.set(this.scale, this.scale, this.scale);
     this.object.rotation.x = -Math.PI / 2;
 
-    this.object.position.copy(position);
+    this.object.position.copy(options.position || 0);
     this.object.castShadow = true;
 
-    this.speed = speed;
+    this.speed = options.speed || 2.5;
 
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
 
-    this.origLife = this.life = life;
+    this.origLife = this.life = options.life || 30;
 
-    this.scale = scale;
+    this.scale = options.scale || 1.3;
     this.spawnsOnDeath = true;
-    this.spawnLevel = spawnLevel;
-    this.spawns = spawns;
+    this.spawnLevel = options.spawnLevel || 3;
+    this.spawns = options.spawns || 2;
 
-    this.canShoot = canShoot;
-    this.fireDistance = 18;
-    this.fireCooldown = 40;
-    this.fireRate = 40;
-    this.bulletSpeed = 12;
-    this.damage = damage;
+    this.canShoot = options.canShoot || false;
+    this.fireDistance = options.fireDistance || 18;
+    this.fireCooldown = options.fireRate || 40;
+    this.fireRate = options.fireRate || 40;
+    this.bulletSpeed = options.bulletSpeed || 12;
+    this.damage = options.damage || 8;
 
     this.attackCooldown = 0;
-    this.attackRate = 20;
+    this.attackRate = options.attackRate || 20;
     this.onTouchAttack = true;
+
+    this.spawnLife = options.spawnLife || false;
+    this.lifeToAdd = options.lifeToAdd || 0;
 
     this.isWithinDistance = false;
 
@@ -75,7 +70,7 @@ export class FollowEnemy3 {
 
     const object = this.object.clone();
 
-    object.scale.set(scale * 0.5, scale, scale * 0.7);
+    object.scale.set(this.scale * 0.5, this.scale, this.scale * 0.7);
     this.bBox = new Box3().setFromObject(object);
   }
 

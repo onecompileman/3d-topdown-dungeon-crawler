@@ -3,6 +3,7 @@ export class ScreenManager {
     this.screens = {
       inGameUITop: document.querySelector('in-game-ui-top'),
       inGameUIBottom: document.querySelector('in-game-ui-bottom'),
+      inGameMapUI: document.querySelector('in-game-map-ui'),
     };
   }
 

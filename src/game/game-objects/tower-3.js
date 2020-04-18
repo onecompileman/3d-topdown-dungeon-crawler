@@ -12,15 +12,7 @@ import { angleToVector2 } from '../../utils/angle-to-vector2';
 import { FollowEnemy1 } from './follow-enemy-1';
 
 export class Tower3 {
-  constructor(
-    position,
-    life = 20,
-    bulletType = EnemyBulletTypes.DESTRUCTIBLE,
-    bullets = 1,
-    fireRate = 15,
-    shieldCount = 4,
-    damage = 5
-  ) {
+  constructor(options) {
     const geometry = new CylinderBufferGeometry(
       0.7,
       0.7,
@@ -36,27 +28,29 @@ export class Tower3 {
     });
 
     this.object = new Mesh(geometry, material);
-    this.object.position.copy(position);
+    this.object.position.copy(options.position || new Vector3(0, 0, 0));
 
-    this.life = life;
-    this.fireCooldown = fireRate;
-    this.fireRate = fireRate;
-    this.bulletSpeed = 14;
-    this.damage = damage;
+    this.life = options.life || 30;
+    this.fireCooldown = options.fireRate || 15;
+    this.fireRate = options.fireRate || 15;
+    this.bulletSpeed = options.bulletSpeed || 14;
+    this.damage = options.damage || 5;
 
-    this.enemySpawnRate = 240;
+    this.enemySpawnRate = options.enemySpawnRate || 260;
     this.enemySpawnCooldown = this.enemySpawnRate;
-    this.enemyLife = 5;
-    this.enemyDamage = 5;
-    this.enemySpeed = 4.5;
+    this.enemyLife = options.enemyLife || 5;
+    this.enemyDamage = options.enemyDamage || 3;
+    this.enemySpeed = options.enemySpeed || 4;
     this.enemySpawn = true;
-    this.enemySpawnCanShoot = false;
+    this.enemySpawnCanShoot = options.enemySpawnCanShoot || false;
 
-    this.bulletType = bulletType;
-    this.bulletsToFire = bullets;
+    this.bulletType = options.bulletType || EnemyBulletTypes.DESTRUCTIBLE;
+    this.bulletsToFire = options.bullets || 1;
 
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
+
+    const shieldCount = options.shieldCount || 1;
 
     this.shields = [];
     this.shieldBbox = [];
@@ -74,6 +68,9 @@ export class Tower3 {
     }
 
     this.bBox = new Box3().setFromObject(this.object);
+
+    this.spawnLife = options.spawnLife || false;
+    this.lifeToAdd = options.lifeToAdd || 0;
   }
 
   takeDamage(damage = 1) {

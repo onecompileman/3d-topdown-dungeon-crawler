@@ -16,6 +16,8 @@ import {
   Box3,
   MathUtils,
   Color,
+  Quaternion,
+  Euler,
 } from 'three';
 
 import C from 'cannon';
@@ -35,6 +37,10 @@ import { Tower1 } from './game-objects/tower-1';
 import { Tower2 } from './game-objects/tower-2';
 import { Tower3 } from './game-objects/tower-3';
 import { Boss } from './game-objects/boss';
+import { Floor } from './floor';
+import { LevelManager } from './level-manager';
+import { BossPhases } from '../enums/boss-phases.enum';
+import { Life } from './power-ups/life';
 
 export class GameManager {
   constructor() {}
@@ -57,16 +63,35 @@ export class GameManager {
     this.initEnemies();
 
     this.initClock();
-    this.initPlatform();
+    // this.initPlatform();
     this.initParticleSystems();
     this.initPlayer();
     this.initBullets();
     this.render();
+    this.initLevelManager();
     // this.soundManager.playAudio('weightOfTheWorld', 0.3, true);
   }
 
   initScreenManager() {
     this.screenManager = new ScreenManager();
+  }
+
+  initLevelManager() {
+    this.levelManager = new LevelManager({
+      player: this.player,
+      scene: this.scene,
+      world: this.world,
+      mapUI: this.screenManager.screens.inGameMapUI,
+    });
+
+    this.levelManager.startActiveFloor();
+  }
+
+  updateLevelManager() {
+    if (this.levelManager) {
+      this.levelManager.update();
+      this.levelManager.floor.update();
+    }
   }
 
   initBosses() {
@@ -86,239 +111,366 @@ export class GameManager {
 
   updateBosses() {
     let bossesToAdd = [];
+    if (this.levelManager && this.levelManager.floor) {
+      this.levelManager.floor.currentRoom.bosses = this.levelManager.floor.currentRoom.bosses.filter(
+        (enemy) => {
+          enemy.update();
 
-    this.bosses = this.bosses.filter((enemy) => {
-      enemy.update();
+          enemy.follow(this.player.object.position.clone());
+          // console.log(enemy.currentPhase);
 
-      enemy.follow(this.player.object.position.clone());
+          if (enemy.currentPhase === BossPhases.BOUNCES) {
+            let hasCollided = false;
+            let toAdjust = null;
 
-      if (enemy.onTouchAttack) {
-        if (enemy.canAttack() && this.player.bBox.intersectsBox(enemy.bBox)) {
-          this.player.takeDamage(enemy.damage);
-          enemy.attackCooldown = enemy.attackRate;
-          this.screenManager.screens.inGameUITop.life = this.player.life;
+            hasCollided =
+              hasCollided ||
+              this.levelManager.floor.currentRoom.sideBlockers.some((sB, i) => {
+                // const obj = sb.clone();
+
+                const bBox = new Box3().setFromObject(sB);
+
+                const shield = enemy.object.clone();
+                shield.scale.set(1.3, 1.3, 1.3);
+
+                const shieldBbox = new Box3().setFromObject(shield);
+
+                if (bBox.intersectsBox(shieldBbox)) {
+                  toAdjust = i <= 3 ? 'z' : 'x';
+
+                  return true;
+                }
+
+                return false;
+              });
+
+            if (!hasCollided) {
+              hasCollided =
+                hasCollided ||
+                this.levelManager.floor.currentRoom.pathWayBlockers.some(
+                  (pW, i) => {
+                    const bBox = new Box3().setFromObject(pW);
+
+                    const shield = enemy.object.clone();
+                    shield.scale.set(1.3, 1.3, 1.3);
+
+                    const shieldBbox = new Box3().setFromObject(shield);
+
+                    if (bBox.intersectsBox(shieldBbox)) {
+                      toAdjust = i === 0 || i === 2 ? 'z' : 'x';
+
+                      return true;
+                    }
+
+                    return false;
+                  }
+                );
+            }
+
+            if (!hasCollided) {
+              hasCollided =
+                hasCollided ||
+                this.levelManager.floor.currentRoom.boxes.some((box, i) => {
+                  const shield = enemy.object.clone();
+                  shield.scale.set(1.3, 1.3, 1.3);
+
+                  const shieldBbox = new Box3().setFromObject(shield);
+
+                  if (box.bBox.intersectsBox(shieldBbox)) {
+                    const boxIntersect = box.bBox.intersect(shieldBbox);
+
+                    let intersectSize = new Vector3();
+
+                    boxIntersect.getSize(intersectSize);
+
+                    toAdjust = intersectSize.z < intersectSize.x ? 'z' : 'x';
+
+                    return true;
+                  }
+
+                  return false;
+                });
+            }
+
+            if (hasCollided && enemy.bouncedCooldown <= 0) {
+              enemy.bouncedCooldown = enemy.bouncedRate;
+              if (toAdjust === 'x') {
+                enemy.velocity.x = -enemy.velocity.x;
+              } else {
+                enemy.velocity.z = -enemy.velocity.z;
+              }
+            }
+          }
+
+          if (enemy.onTouchAttack) {
+            if (
+              enemy.canAttack() &&
+              this.player.bBox.intersectsBox(enemy.bBox)
+            ) {
+              this.player.takeDamage(enemy.damage);
+              enemy.attackCooldown = enemy.attackRate;
+              this.screenManager.screens.inGameUITop.life = this.player.life;
+            }
+          }
+
+          if (enemy.canFire()) {
+            const bullets = enemy.fire();
+            bullets.forEach((b) => {
+              this.scene.add(b.object);
+            });
+            this.enemyBullets.push(...bullets);
+          }
+
+          if (enemy.isDead()) {
+            const particleSystem = new ParticleSystem(
+              this.scene,
+              20,
+              0.1,
+              200,
+              80,
+              enemy.object.position.clone(),
+              enemy.object.material.color.clone(),
+              0.8,
+              new Vector3(-1, -1, -1),
+              new Vector3(1, 1, 1),
+              ParticleTypes.ENEMY1_EXPLODE,
+              false
+            );
+
+            particleSystem.start();
+
+            this.particleSystems.push(particleSystem);
+
+            if (enemy.spawnsOnDeath) {
+              bossesToAdd.push(...enemy.onDeathSpawns());
+            }
+
+            if (enemy.spawnLife) {
+              const life = new Life(
+                enemy.object.position.clone(),
+                enemy.lifeToAdd
+              );
+
+              this.scene.add(life);
+
+              this.levelManager.floor.currentRoom.powerups.push(life);
+            }
+
+            this.world.remove(enemy.object.body);
+            this.scene.remove(enemy.object);
+            this.scene.remove(enemy.line);
+          }
+
+          return !enemy.isDead();
         }
-      }
-
-      if (enemy.canFire()) {
-        const bullets = enemy.fire();
-        bullets.forEach((b) => {
-          this.scene.add(b.object);
-        });
-        this.enemyBullets.push(...bullets);
-      }
-
-      if (enemy.isDead()) {
-        const particleSystem = new ParticleSystem(
-          this.scene,
-          20,
-          0.1,
-          200,
-          80,
-          enemy.object.position.clone(),
-          enemy.object.material.color.clone(),
-          0.8,
-          new Vector3(-1, -1, -1),
-          new Vector3(1, 1, 1),
-          ParticleTypes.ENEMY1_EXPLODE,
-          false
-        );
-
-        particleSystem.start();
-
-        this.particleSystems.push(particleSystem);
-
-        if (enemy.spawnsOnDeath) {
-          bossesToAdd.push(...enemy.onDeathSpawns());
-        }
-
-        this.world.remove(enemy.object.body);
-        this.scene.remove(enemy.object);
-        this.scene.remove(enemy.line);
-      }
-
-      return !enemy.isDead();
-    });
+      );
+    }
 
     bossesToAdd.forEach((e) => {
       e.object.add(e.line);
       this.scene.add(e.object);
       this.addMeshToWorld(e.object, 60);
 
-      this.bosses.push(e);
+      this.levelManager.floor.currentRoom.bosses.push(e);
     });
   }
 
-  initEnemies() {
-    this.enemies = [];
+  updatePowerups() {
+    if (
+      this.levelManager &&
+      this.levelManager.floor &&
+      this.levelManager.floor.currentRoom
+    ) {
+      this.levelManager.floor.currentRoom.powerups = this.levelManager.floor.currentRoom.powerups.filter(
+        (powerup) => {
+          powerup.update();
 
-    // for (let i = 0; i < 3; i++) {
-    //   const enemy = new FollowEnemy4(
-    //     new Vector3(
-    //       MathUtils.randFloat(-5, 5),
-    //       -0.5,
-    //       MathUtils.randFloat(-5, 5)
-    //     ),
-    //     20,
-    //     3,
-    //     true
-    //   );
+          if (this.player.bBox.intersectsBox(powerup.bBox)) {
+            this.player.life = MathUtils.clamp(
+              this.player.life + powerup.plusLife,
+              0,
+              100
+            );
 
-    //   // this.scene.add(enemy.line);
-    //   if (enemy.has2ndObject) {
-    //     this.scene.add(enemy.object2);
-    //   }
+            this.scene.remove(powerup.object);
 
-    //   enemy.object.add(enemy.line);
-    //   this.scene.add(enemy.object);
+            const particleSystem = new ParticleSystem(
+              this.scene,
+              14,
+              0.1,
+              200,
+              80,
+              powerup.object.position.clone(),
+              new Color(0xffffff),
+              0.4,
+              new Vector3(-1, -1, -1),
+              new Vector3(1, 1, 1),
+              ParticleTypes.LIFE,
+              false
+            );
 
-    //   this.addMeshToWorld(enemy.object, 20);
+            particleSystem.start();
 
-    //   this.enemies.push(enemy);
-    // }
+            this.screenManager.screens.inGameUITop.life = this.player.life;
 
-    // for (let i = 0; i < 2; i++) {
-    //   const enemy = new Tower3(
-    //     new Vector3(
-    //       MathUtils.randFloat(-15, 15),
-    //       -0.5,
-    //       MathUtils.randFloat(-15, 15)
-    //     ),
-    //     50,
-    //     EnemyBulletTypes.RANDOM,
-    //     2,
-    //     10
-    //   );
+            this.particleSystems.push(particleSystem);
 
-    //   if (enemy.shields) {
-    //     enemy.shields.forEach((shield) => {
-    //       console.log(shield);
-    //       this.scene.add(shield);
-    //       console.log(shield);
-    //     });
-    //   }
+            return false;
+          }
 
-    //   // this.scene.add(enemy.line);
-    //   if (enemy.has2ndObject) {
-    //     this.scene.add(enemy.object2);
-    //   }
-
-    //   enemy.object.add(enemy.line);
-    //   this.scene.add(enemy.object);
-
-    //   this.addMeshToWorld(enemy.object, 20);
-
-    //   this.enemies.push(enemy);
-    // }
-
-    // for (let i = 0; i < 2; i++) {
-    //   const enemy = new Tower1(
-    //     new Vector3(
-    //       MathUtils.randFloat(-5, 5),
-    //       -0.5,
-    //       MathUtils.randFloat(-5, 5)
-    //     ),
-    //     150,
-    //     EnemyBulletTypes.RANDOM,
-    //     2,
-    //     15
-    //   );
-
-    //   // this.scene.add(enemy.line);
-    //   if (enemy.has2ndObject) {
-    //     this.scene.add(enemy.object2);
-    //   }
-
-    //   enemy.object.add(enemy.line);
-    //   this.scene.add(enemy.object);
-
-    //   this.addMeshToWorld(enemy.object, 20);
-
-    //   this.enemies.push(enemy);
-    // }
+          return true;
+        }
+      );
+    }
   }
+
+  updateBoxes() {
+    if (
+      this.levelManager &&
+      this.levelManager.floor &&
+      this.levelManager.floor.currentRoom
+    ) {
+      this.levelManager.floor.currentRoom.boxes = this.levelManager.floor.currentRoom.boxes.filter(
+        (box) => {
+          box.update();
+
+          if (box.isDead()) {
+            this.scene.remove(box.object);
+            this.world.remove(box.object.body);
+
+            const particleSystem = new ParticleSystem(
+              this.scene,
+              14,
+              0.1,
+              200,
+              70,
+              box.object.position.clone(),
+              box.object.material.color.clone(),
+              0.5,
+              new Vector3(-1, -1, -1),
+              new Vector3(1, 1, 1),
+              ParticleTypes.ENEMY1_EXPLODE,
+              false
+            );
+
+            particleSystem.start();
+
+            this.particleSystems.push(particleSystem);
+
+            return false;
+          }
+
+          return true;
+        }
+      );
+    }
+  }
+
+  initEnemies() {}
 
   updateEnemies() {
     let enemiesToAdd = [];
+    if (
+      this.levelManager &&
+      this.levelManager.floor.currentRoom &&
+      this.levelManager.floor.currentRoom.enemies
+    ) {
+      this.levelManager.floor.currentRoom.enemies = this.levelManager.floor.currentRoom.enemies.filter(
+        (enemy) => {
+          enemy.update();
 
-    this.enemies = this.enemies.filter((enemy) => {
-      enemy.update();
+          enemy.follow(this.player.object.position.clone());
 
-      enemy.follow(this.player.object.position.clone());
+          if (enemy.onTouchAttack) {
+            if (
+              enemy.canAttack() &&
+              this.player.bBox.intersectsBox(enemy.bBox)
+            ) {
+              this.player.takeDamage(enemy.damage);
+              enemy.attackCooldown = enemy.fireRate;
+              this.screenManager.screens.inGameUITop.life = this.player.life;
+            }
+          }
 
-      if (enemy.onTouchAttack) {
-        if (enemy.canAttack() && this.player.bBox.intersectsBox(enemy.bBox)) {
-          this.player.takeDamage(enemy.damage);
-          enemy.attackCooldown = enemy.fireRate;
+          if (enemy.enemySpawn) {
+            if (enemy.canSpawnEnemy()) {
+              const e = enemy.spawnEnemy();
+              this.addMeshToWorld(e.object, 30);
+              this.scene.add(e.line);
+              e.object.add(e.line);
+              this.scene.add(e.object);
+              enemiesToAdd.push(e);
+            }
+          }
+
+          if (enemy.canFire()) {
+            const bullets = enemy.fire();
+            bullets.forEach((b) => {
+              this.scene.add(b.object);
+            });
+            this.enemyBullets.push(...bullets);
+          }
+
+          if (enemy.isDead()) {
+            const particleSystem = new ParticleSystem(
+              this.scene,
+              14,
+              0.1,
+              200,
+              70,
+              enemy.object.position.clone(),
+              enemy.object.material.color.clone(),
+              0.5,
+              new Vector3(-1, -1, -1),
+              new Vector3(1, 1, 1),
+              ParticleTypes.ENEMY1_EXPLODE,
+              false
+            );
+
+            particleSystem.start();
+
+            this.particleSystems.push(particleSystem);
+
+            if (enemy.spawnsOnDeath) {
+              enemiesToAdd.push(...enemy.onDeathSpawns());
+            }
+
+            if (enemy.spawnLife) {
+              const life = new Life(
+                enemy.object.position.clone(),
+                enemy.lifeToAdd
+              );
+
+              this.scene.add(life.object);
+
+              this.levelManager.floor.currentRoom.powerups.push(life);
+            }
+
+            this.world.remove(enemy.object.body);
+            this.scene.remove(enemy.object);
+
+            if (enemy.shields) {
+              enemy.shields.forEach((s) => {
+                this.scene.remove(s);
+              });
+            }
+
+            if (enemy.has2ndObject) {
+              this.scene.remove(enemy.object2);
+            }
+          }
+
+          return !enemy.isDead();
         }
-      }
-
-      if (enemy.enemySpawn) {
-        if (enemy.canSpawnEnemy()) {
-          const e = enemy.spawnEnemy();
-          this.addMeshToWorld(e.object, 30);
-          this.scene.add(e.line);
-          e.object.add(e.line);
-          this.scene.add(e.object);
-          enemiesToAdd.push(e);
-        }
-      }
-
-      if (enemy.canFire()) {
-        const bullets = enemy.fire();
-        bullets.forEach((b) => {
-          this.scene.add(b.object);
-        });
-        this.enemyBullets.push(...bullets);
-      }
-
-      if (enemy.isDead()) {
-        const particleSystem = new ParticleSystem(
-          this.scene,
-          14,
-          0.1,
-          200,
-          70,
-          enemy.object.position.clone(),
-          enemy.object.material.color.clone(),
-          0.5,
-          new Vector3(-1, -1, -1),
-          new Vector3(1, 1, 1),
-          ParticleTypes.ENEMY1_EXPLODE,
-          false
-        );
-
-        particleSystem.start();
-
-        this.particleSystems.push(particleSystem);
-
-        if (enemy.spawnsOnDeath) {
-          enemiesToAdd.push(...enemy.onDeathSpawns());
-        }
-
-        this.world.remove(enemy.object.body);
-        this.scene.remove(enemy.object);
-
-        if (enemy.shields) {
-          enemy.shields.forEach((s) => {
-            this.scene.remove(s);
-          });
-        }
-
-        if (enemy.has2ndObject) {
-          this.scene.remove(enemy.object2);
-        }
-      }
-
-      return !enemy.isDead();
-    });
+      );
+    }
 
     enemiesToAdd.forEach((e) => {
       e.object.add(e.line);
       this.scene.add(e.object);
       this.addMeshToWorld(e.object, 60);
 
-      this.enemies.push(e);
+      this.levelManager.floor.currentRoom.enemies.push(e);
     });
   }
 
@@ -422,6 +574,8 @@ export class GameManager {
     this.player.onDash = () => {
       this.soundManager.playAudio('dash');
     };
+
+    this.directionalLight.lookAt(this.player.object);
   }
 
   initPlatform() {
@@ -466,7 +620,7 @@ export class GameManager {
       50,
       this.canvas.clientWidth / this.canvas.clientHeight,
       0.1,
-      70
+      60
     );
 
     this.camera.rotation.set(-0.9, 0, 0);
@@ -483,6 +637,22 @@ export class GameManager {
   updateBullets(deltaTime) {
     this.enemyBullets = this.enemyBullets.filter((b) => {
       b.update(deltaTime);
+
+      this.levelManager.floor.currentRoom.boxes.forEach((box) => {
+        b.isCollided = b.isCollided || box.bBox.intersectsBox(b.bBox);
+      });
+
+      this.levelManager.floor.currentRoom.sideBlockers.forEach((sB) => {
+        const bBox = new Box3().setFromObject(sB);
+
+        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+      });
+
+      this.levelManager.floor.currentRoom.pathWayBlockers.forEach((sB) => {
+        const bBox = new Box3().setFromObject(sB);
+
+        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+      });
 
       if (b.type === EnemyBulletTypes.DESTRUCTIBLE) {
         this.playerBullets.forEach((pB) => {
@@ -542,31 +712,66 @@ export class GameManager {
 
       let enemyCollided = null;
 
+      this.levelManager.floor.currentRoom.boxes.forEach((box) => {
+        if (box.bBox.intersectsBox(b.bBox)) {
+          b.isCollided = true;
+
+          if (box.destructable) {
+            box.life--;
+            box.takeDamage = box.takeDamageRate;
+
+            // console.log('here');
+          }
+        }
+      });
+
+      if (this.levelManager.floor.gem) {
+        if (this.levelManager.floor.gemBbox.intersectsBox(b.bBox)) {
+          this.levelManager.floor.gemLife--;
+          b.isCollided = true;
+        }
+      }
+
+      this.levelManager.floor.currentRoom.sideBlockers.forEach((sB) => {
+        const bBox = new Box3().setFromObject(sB);
+
+        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+      });
+
+      this.levelManager.floor.currentRoom.pathWayBlockers.forEach((sB) => {
+        const bBox = new Box3().setFromObject(sB);
+
+        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+      });
+
       if (b.object.position.y <= -1.5) {
         b.isCollided = true;
       }
 
       if (b.type === WeaponTypes.HOMING) {
-        if (!this.enemies.length) {
+        if (!this.levelManager.floor.currentRoom.enemies.length) {
           b.follow = null;
         } else {
           if (!b.follow) {
             const isBoss =
-              this.enemies.length === 0 ? true : MathUtils.randInt(0, 1);
+              this.levelManager.floor.currentRoom.enemies.length === 0
+                ? true
+                : MathUtils.randInt(0, 1);
             const enemyToFollow = isBoss
               ? randomArrayElement(this.bosses)
-              : randomArrayElement(this.enemies);
-
-            if (enemyToFollow.has2ndObject) {
-              b.follow = enemyToFollow.object2.position.clone();
-            } else {
-              b.follow = enemyToFollow.object.position.clone();
+              : randomArrayElement(this.levelManager.floor.currentRoom.enemies);
+            if (enemyToFollow) {
+              if (enemyToFollow.has2ndObject) {
+                b.follow = enemyToFollow.object2.position.clone();
+              } else {
+                b.follow = enemyToFollow.object.position.clone();
+              }
             }
           }
         }
       }
 
-      this.bosses.forEach((boss) => {
+      this.levelManager.floor.currentRoom.bosses.forEach((boss) => {
         if (!b.isCollided) {
           if (boss.shieldEnabled && boss.shieldBbox.intersectsBox(b.bBox)) {
             b.isCollided = true;
@@ -578,7 +783,7 @@ export class GameManager {
       });
 
       // Check enemy collision
-      this.enemies.forEach((e) => {
+      this.levelManager.floor.currentRoom.enemies.forEach((e) => {
         if (e.shields) {
           e.shieldBbox.forEach((sB) => {
             if (sB.intersectsBox(b.bBox)) {
@@ -675,13 +880,15 @@ export class GameManager {
   }
 
   onMouseMove(event) {
-    this.mouse.x = (event.clientX / innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / innerHeight) * 2 + 1;
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    this.raycaster.ray.intersectBox(
-      new Box3().setFromObject(this.platform),
-      this.intersectPoint
-    );
+    if (this.levelManager && this.levelManager.floor) {
+      this.mouse.x = (event.clientX / innerWidth) * 2 - 1;
+      this.mouse.y = -(event.clientY / innerHeight) * 2 + 1;
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      this.raycaster.ray.intersectBox(
+        new Box3().setFromObject(this.levelManager.floor.roomAllPlatforms),
+        this.intersectPoint
+      );
+    }
   }
 
   render() {
@@ -695,6 +902,9 @@ export class GameManager {
     this.updateBosses();
     this.updatePlayer(delta);
     this.updateBullets(delta);
+    this.updateBoxes();
+    this.updateLevelManager();
+    this.updatePowerups();
     this.updateWorld();
     this.updateEnemies();
 
@@ -726,8 +936,8 @@ export class GameManager {
 
     this.cameraPositionToFollow = new Vector3(
       this.player.object.position.x,
-      17,
-      this.player.object.position.z + 12
+      19,
+      this.player.object.position.z + 16
     );
   }
 

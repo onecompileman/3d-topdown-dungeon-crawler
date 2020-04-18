@@ -20,53 +20,53 @@ import { EnemyBullet } from './enemy-bullet';
 import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
 
 export class Boss {
-  constructor(
-    position,
-    life = 200,
-    damage = 10,
-    phases = 1,
-    bullets = 6,
-    spawnsOnDeath = false,
-    spawnLevel = 1,
-    spawns = 2
-  ) {
+  constructor(options) {
     const geometry = new SphereBufferGeometry(1.3, 12, 9);
     const material = new MeshLambertMaterial({
       color: 0x111111,
     });
 
+    this.options = options;
+
     this.object = new Mesh(geometry, material);
 
-    this.object.position.copy(position);
+    this.object.position.copy(options.position || new Vector3(0, 0, 0));
     this.object.position.y = -1.2;
 
-    this.life = life;
-    this.damage = damage;
-    this.phases = phases;
+    this.life = options.life || 130;
+    this.damage = options.damage || 8;
+    this.phases = options.phases || 1;
 
-    this.spawnsOnDeath = spawnsOnDeath;
-    this.spawns = spawns;
-    this.spawnLevel = spawnLevel;
-    this.hasShield = false;
-    this.shieldEnabled = false;
-    this.speed = 5;
+    this.spawnsOnDeath = options.spawnsOnDeath || false;
+    this.spawns = options.spawns || false;
+    this.spawnLevel = options.spawnLevel || 2;
+    this.hasShield = options.hasShield || false;
+    this.shieldEnabled = options.hasShield || false;
+    this.speed = options.speed || 4.5;
 
-    this.fireCooldown = 12;
-    this.fireRate = 12;
-    this.bulletSpeed = 12;
-    this.damage = damage;
-    this.bulletsToFire = bullets;
+    this.fireCooldown = options.fireRate || 15;
+    this.fireRate = options.fireRate || 15;
+    this.bulletSpeed = options.bulletSpeed || 14;
+    this.bulletsToFire = options.bulletsToFire || 1;
 
     this.attackCooldown = 0;
-    this.attackRate = 20;
+    this.attackRate = options.attackRate || 20;
     this.onTouchAttack = true;
+
+    this.bouncedCooldown = 0;
+    this.bouncedRate = 20;
+
+    this.spawnLife = options.spawnLife || false;
+    this.lifeToAdd = options.lifeToAdd || 0;
 
     const randomPhase = randomArrayElement(Object.keys(BossPhases));
     this.currentPhase = BossPhases[randomPhase];
 
+    // this.currentPhase = 1;
+
     this.currentPhaseCtr = 1;
-    const phaseLifeIncrement = life / (phases + 1);
-    this.phasesLife = Array(phases + 1)
+    const phaseLifeIncrement = this.life / (this.phases + 1);
+    this.phasesLife = Array(this.phases)
       .fill(1)
       .map((p, i) => [i * phaseLifeIncrement, (i + 1) * phaseLifeIncrement])
       .sort((a, b) => b[1] - a[1]);
@@ -84,11 +84,9 @@ export class Boss {
     this.bBox = new Box3().setFromObject(this.object);
     this.shieldBbox = new Box3().setFromObject(this.line);
 
-    this.velocity = new Vector3(
-      MathUtils.randFloat(-1, 1),
-      0,
-      MathUtils.randFloat(-1, 1)
-    );
+    this.velocity = new Vector3(1, 0, 1);
+
+    this.onChangeCurrentPhase = () => {};
   }
 
   takeDamage(damage) {
@@ -102,7 +100,7 @@ export class Boss {
 
       if (
         this.currentPhaseCtr !== i + 1 &&
-        this.life >= minLife &&
+        this.life > minLife &&
         this.life <= maxLife
       ) {
         const randomPhase = randomArrayElement(Object.keys(BossPhases));
@@ -133,8 +131,14 @@ export class Boss {
     this.object.body.velocity = new C.Vec3(vel.x, 0, vel.z);
     this.object.position.copy(this.object.body.position);
 
-    this.bBox.setFromObject(this.object);
-    this.shieldBbox.setFromObject(this.line);
+    const obj = this.object.clone();
+    obj.scale.set(0.75, 0.75, 0.75);
+
+    const lineObj = this.line.clone();
+    // console.log(lineObj.scale);
+
+    this.bBox.setFromObject(obj);
+    this.shieldBbox.setFromObject(obj);
 
     if (this.takeDamageCooldown > 0) {
       this.object.material.color.set(0xeeeeee);
@@ -148,6 +152,28 @@ export class Boss {
     this.fireCooldown--;
     this.attackCooldown--;
     this.takeDamageCooldown--;
+    this.bouncedCooldown--;
+  }
+
+  onDeathSpawns() {
+    let enemies = [];
+    if (this.spawnLevel > 1) {
+      for (let i = 0; i < this.spawns; i++) {
+        const position = this.object.position;
+
+        const enemy = new Boss({
+          ...this.options,
+          position,
+          life: this.life / 2,
+          speed: this.speed + 1.8,
+          spawns: this.spawns * 2,
+          spawnLevel: this.spawnLevel - 1,
+        });
+
+        enemies.push(enemy);
+      }
+    }
+    return enemies;
   }
 
   follow(target) {
@@ -156,7 +182,7 @@ export class Boss {
       const pos2d = new Vector2(this.object.position.x, this.object.position.z);
 
       let vel = follow2dTarget.sub(pos2d);
-      vel.multiplyScalar(-1);
+      // vel.multiplyScalar(-1);
 
       this.velocity.set(vel.x, 0, vel.y);
     }

@@ -88,6 +88,16 @@ export class Particle {
         });
         this.object = new Mesh(geometry, material);
         return;
+
+      case ParticleTypes.LIFE:
+        geometry = new BoxBufferGeometry(size, size, size);
+        material = new MeshLambertMaterial({
+          color: 0xce2121,
+          emissive: 0x910000,
+          emissiveIntensity: 1,
+        });
+        this.object = new Mesh(geometry, material);
+        return;
     }
   }
 

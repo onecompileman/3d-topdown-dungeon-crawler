@@ -11,15 +11,7 @@ import { EnemyBullet } from './enemy-bullet';
 import { angleToVector2 } from '../../utils/angle-to-vector2';
 
 export class Tower2 {
-  constructor(
-    position,
-    life = 20,
-    bulletType = EnemyBulletTypes.DESTRUCTIBLE,
-    bullets = 1,
-    fireRate = 15,
-    shieldCount = 4,
-    damage = 5
-  ) {
+  constructor(options) {
     const geometry = new CylinderBufferGeometry(
       0.7,
       0.7,
@@ -35,22 +27,24 @@ export class Tower2 {
     });
 
     this.object = new Mesh(geometry, material);
-    this.object.position.copy(position);
+    this.object.position.copy(options.position || new Vector3(0, 0, 0));
 
-    this.life = life;
-    this.fireCooldown = fireRate;
-    this.fireRate = fireRate;
-    this.bulletSpeed = 14;
-    this.damage = damage;
+    this.life = options.life || 30;
+    this.fireCooldown = options.fireRate || 15;
+    this.fireRate = options.fireRate || 15;
+    this.bulletSpeed = options.bulletSpeed || 14;
+    this.damage = options.damage || 5;
 
-    this.bulletType = bulletType;
-    this.bulletsToFire = bullets;
+    this.bulletType = options.bulletType || EnemyBulletTypes.DESTRUCTIBLE;
+    this.bulletsToFire = options.bullets || 1;
 
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
 
     this.shields = [];
     this.shieldBbox = [];
+
+    const shieldCount = options.shieldCount || 2;
 
     for (let i = 0; i < shieldCount; i++) {
       const geometry1 = new BoxBufferGeometry(0.85, 0.85, 0.15);
@@ -65,6 +59,9 @@ export class Tower2 {
     }
 
     this.bBox = new Box3().setFromObject(this.object);
+
+    this.spawnLife = options.spawnLife || false;
+    this.lifeToAdd = options.lifeToAdd || 0;
   }
 
   takeDamage(damage = 1) {
