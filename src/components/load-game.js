@@ -1,3 +1,6 @@
+import { GameStateService } from '../services/game-state.service';
+import { ScreenManager } from '../game/screen-manager';
+
 const componentStyles = `
     <style>
         .load-game {
@@ -24,6 +27,7 @@ const componentStyles = `
             color: #EDE8CF; 
             margin-top: 15px;
             transition: 0.2s linear;
+            cursor: pointer;
         }
 
         .load-game-slot:hover {
@@ -66,9 +70,36 @@ export class LoadGame extends HTMLElement {
     this.root = this.attachShadow({ mode: 'open' });
     this.prop = {
       backCallback: () => {},
+      saveSlots: {},
+      newGame: false,
     };
+
     this.renderHTML();
     this.bindEvents();
+  }
+
+  set saveSlots(saveSlots) {
+    this.prop.saveSlots = saveSlots;
+
+    const slotNames = Object.keys(saveSlots);
+    slotNames.forEach((slotName) => {
+      const floors = saveSlots[slotName].floors;
+      const saveSlot = this.root.querySelector(`#${slotName}`);
+
+      if (floors) {
+        const progress = Math.round(floors.length / 25) * 100;
+
+        saveSlot.querySelector(
+          '.progress'
+        ).innerHTML = `Progress: ${progress} %`;
+      } else {
+        saveSlot.querySelector('.progress').innerHTML = 'No game slot';
+      }
+    });
+  }
+
+  get saveSlots() {
+    return this.prop.saveSlots;
   }
 
   get backCallback() {
@@ -79,10 +110,55 @@ export class LoadGame extends HTMLElement {
     this.prop.backCallback = backCallback;
   }
 
+  get newGame() {
+    return this.prop.newGame;
+  }
+
+  set newGame(newGame) {
+    this.prop.newGame = newGame;
+  }
+
   bindEvents() {
+    const screenManager = new ScreenManager();
+
     this.root
       .querySelector('#back')
       .addEventListener('click', () => this.prop.backCallback());
+
+    const gameSlotsEl = this.root.querySelectorAll('.load-game-slot');
+    for (let i = 0; i < gameSlotsEl.length; i++) {
+      gameSlotsEl[i].addEventListener('click', () => {
+        const gameState = new GameStateService();
+        const slotName = gameSlotsEl[i].getAttribute('id');
+
+        if (gameState.isSlotExisting(slotName)) {
+          if (!this.prop.newGame) {
+            gameState.initSlot(slotName);
+            screenManager.hideAllScreens();
+            screenManager.showScreen('levelSelect');
+          } else {
+            const areYouSureComponent = document.querySelector('are-you-sure');
+            areYouSureComponent.style.display = 'block';
+
+            areYouSureComponent.message = `${slotName} is already taken, this will data there!`;
+            areYouSureComponent.cancelCallback = () => {
+              areYouSureComponent.style.display = 'none';
+            };
+            areYouSureComponent.confirmCallback = () => {
+              gameState.initSlot(slotName);
+              screenManager.hideAllScreens();
+              screenManager.showScreen('levelSelect');
+            };
+          }
+        } else {
+          if (this.prop.newGame) {
+            gameState.initSlot(slotName);
+            screenManager.hideAllScreens();
+            screenManager.showScreen('levelSelect');
+          }
+        }
+      });
+    }
   }
 
   renderHTML() {
@@ -98,7 +174,7 @@ export class LoadGame extends HTMLElement {
                     Select game slot:
                 </span>  
                 <div class="load-game-container">
-                   <div class="load-game-slot"
+                   <div class="load-game-slot" id="saveSlot1">
                     <span class="slot">
                        ■ Load Slot 1 
                     </span>
@@ -106,7 +182,7 @@ export class LoadGame extends HTMLElement {
                         No game slot
                     </span>
                    </div> 
-                   <div class="load-game-slot"
+                   <div class="load-game-slot" id="saveSlot2">
                     <span class="slot">
                        ■ Load Slot 2 
                     </span>
@@ -114,7 +190,7 @@ export class LoadGame extends HTMLElement {
                         No game slot
                     </span>
                    </div> 
-                   <div class="load-game-slot"
+                   <div class="load-game-slot" id="saveSlot3">
                     <span class="slot">
                        ■ Load Slot 3 
                     </span>
@@ -128,13 +204,19 @@ export class LoadGame extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['backCallback'];
+    return ['backCallback', 'newGame', 'saveSlots'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
     switch (name) {
       case 'backCallback':
         this.backCallback = newValue;
+        break;
+      case 'newGame':
+        this.newGame = newValue;
+        break;
+      case 'saveSlots':
+        this.saveSlots = newValue;
         break;
     }
   }

@@ -62,41 +62,51 @@ const componentStyles = `
     </style>
 `;
 
-export class PauseScreen extends HTMLElement {
+export class AreYouSure extends HTMLElement {
   constructor() {
     super();
     this.root = this.attachShadow({ mode: 'open' });
     this.prop = {
-      quitCallback: () => {},
-      resumeCallback: () => {},
+      cancelCallback: () => {},
+      confirmCallback: () => {},
+      message: '',
     };
     this.renderHTML();
     this.bindEvents();
   }
 
-  get quitCallback() {
-    return this.prop.quitCallback;
+  get message() {
+    return this.prop.message;
   }
 
-  set quitCallback(quitCallback) {
-    this.prop.quitCallback = quitCallback;
+  set message(message) {
+    this.root.querySelector('#message').innerHTML = message;
+    this.prop.message = message;
   }
 
-  get resumeCallback() {
-    return this.prop.resumeCallback;
+  get cancelCallback() {
+    return this.prop.cancelCallback;
   }
 
-  set resumeCallback(resumeCallback) {
-    this.prop.resumeCallback = resumeCallback;
+  set cancelCallback(cancelCallback) {
+    this.prop.cancelCallback = cancelCallback;
+  }
+
+  get confirmCallback() {
+    return this.prop.confirmCallback;
+  }
+
+  set resumeCallback(confirmCallback) {
+    this.prop.confirmCallback = confirmCallback;
   }
 
   bindEvents() {
     this.root
       .querySelector('#quit')
-      .addEventListener('click', () => this.prop.quitCallback());
+      .addEventListener('click', () => this.prop.cancelCallback());
     this.root
       .querySelector('#resume')
-      .addEventListener('click', () => this.prop.resumeCallback());
+      .addEventListener('click', () => this.prop.confirmCallback());
   }
 
   renderHTML() {
@@ -105,20 +115,19 @@ export class PauseScreen extends HTMLElement {
             <div class="pause-screen">
                 <div class="pause-panel">
                     <div class="pause-header">
-                        ■ Pause screen
+                        ■ Are you sure?
                     </div>
                     <div class="pause-body">
-                        <p>
-                            Game is Paused
+                        <p id="message">
                         </p>
                     </div>
                     <div class="pause-footer">
                         <div class="action-container">
                             <div id="quit" class="pause-action-item">
-                                Quit
+                                Cancel
                             </div>
                             <div id="resume" class="pause-action-item">
-                                Resume
+                                Confirm
                             </div>
                         </div>
                     </div>
@@ -128,19 +137,22 @@ export class PauseScreen extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['quitCallback', 'resumeCallback'];
+    return ['cancelCallback', 'confirmCallback', 'message'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
     switch (name) {
-      case 'quitCallback':
-        this.quitCallback = newValue;
+      case 'cancelCallback':
+        this.cancelCallback = newValue;
         break;
-      case 'resumeCallback':
-        this.resumeCallback = newValue;
+      case 'confirmCallback':
+        this.confirmCallback = newValue;
+        break;
+      case 'message':
+        this.message = newValue;
         break;
     }
   }
 }
 
-customElements.define('pause-screen', PauseScreen);
+customElements.define('are-you-sure', AreYouSure);

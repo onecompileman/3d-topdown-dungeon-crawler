@@ -7,6 +7,9 @@ import './components/loading-screen';
 import './components/about-screen';
 import './components/load-game';
 import './components/pause';
+import './components/level-select';
+import './components/floor-cleared';
+import './components/are-you-sure';
 
 import { GameManager } from './game/game-manager';
 

@@ -42,11 +42,13 @@ import { LevelManager } from './level-manager';
 import { BossPhases } from '../enums/boss-phases.enum';
 import { Life } from './power-ups/life';
 import { MainMenuFloor } from './main-menu-floor';
+import { GameStateService } from '../services/game-state.service';
 
 export class GameManager {
   constructor() {}
 
   async initGame() {
+    this.initGameState();
     this.initRenderer();
     this.initScene();
     this.initCamera();
@@ -80,6 +82,10 @@ export class GameManager {
     // this.soundManager.playAudio('weightOfTheWorld', 0.3, true);
   }
 
+  initGameState() {
+    this.gameState = new GameStateService();
+  }
+
   initScreenManager() {
     this.screenManager = new ScreenManager();
 
@@ -104,6 +110,15 @@ export class GameManager {
 
     mainMenu.loadGameCallback = () => {
       this.screenManager.hideAllScreens();
+      loadGame.newGame = false;
+      loadGame.saveSlots = this.gameState.saveSlots;
+      this.screenManager.showScreen('loadGame');
+    };
+
+    mainMenu.newGameCallback = () => {
+      this.screenManager.hideAllScreens();
+      loadGame.newGame = true;
+      loadGame.saveSlots = this.gameState.saveSlots;
       this.screenManager.showScreen('loadGame');
     };
   }
