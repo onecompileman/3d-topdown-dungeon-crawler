@@ -4,6 +4,10 @@ export class ScreenManager {
       inGameUITop: document.querySelector('in-game-ui-top'),
       inGameUIBottom: document.querySelector('in-game-ui-bottom'),
       inGameMapUI: document.querySelector('in-game-map-ui'),
+      mainMenu: document.querySelector('main-menu'),
+      loadingScreen: document.querySelector('loading-screen'),
+      aboutScreen: document.querySelector('about-screen'),
+      loadGame: document.querySelector('load-game'),
     };
   }
 

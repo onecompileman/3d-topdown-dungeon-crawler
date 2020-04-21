@@ -41,6 +41,7 @@ import { Floor } from './floor';
 import { LevelManager } from './level-manager';
 import { BossPhases } from '../enums/boss-phases.enum';
 import { Life } from './power-ups/life';
+import { MainMenuFloor } from './main-menu-floor';
 
 export class GameManager {
   constructor() {}
@@ -51,7 +52,12 @@ export class GameManager {
     this.initCamera();
     this.initScreenManager();
     this.initSoundManager();
-    await this.soundManager.loadAllAudio();
+    await this.soundManager.loadAllAudio(
+      this.screenManager.screens.loadingScreen
+    );
+
+    this.screenManager.hideAllScreens();
+    this.screenManager.showScreen('mainMenu');
 
     this.initLightning();
     this.bindEvents();
@@ -66,14 +72,44 @@ export class GameManager {
     // this.initPlatform();
     this.initParticleSystems();
     this.initPlayer();
+    this.initMainMenu();
     this.initBullets();
     this.render();
-    this.initLevelManager();
+    // this.initLevelManager();
+    this.isPlaying = false;
     // this.soundManager.playAudio('weightOfTheWorld', 0.3, true);
   }
 
   initScreenManager() {
     this.screenManager = new ScreenManager();
+
+    const mainMenu = this.screenManager.screens.mainMenu;
+    const aboutScreen = this.screenManager.screens.aboutScreen;
+    const loadGame = this.screenManager.screens.loadGame;
+
+    aboutScreen.closeCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('mainMenu');
+    };
+
+    loadGame.backCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('mainMenu');
+    };
+
+    mainMenu.aboutCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('aboutScreen');
+    };
+
+    mainMenu.loadGameCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('loadGame');
+    };
+  }
+
+  play() {
+    this.initLevelManager();
   }
 
   initLevelManager() {
@@ -92,6 +128,45 @@ export class GameManager {
       this.levelManager.update();
       this.levelManager.floor.update();
     }
+  }
+
+  initMainMenu() {
+    this.mainMenuFloor = new MainMenuFloor({
+      player: this.player,
+      scene: this.scene,
+      world: this.world,
+    });
+
+    this.mainMenuFloor.initMainMenu();
+
+    this.mainMenuBullets = [];
+  }
+
+  updateMainMenu(deltaTime) {
+    this.mainMenuFloor.room.bosses.forEach((boss) => {
+      boss.update();
+
+      if (boss.canFire()) {
+        const bullets = boss.fire();
+        bullets.forEach((b) => {
+          this.scene.add(b.object);
+        });
+
+        this.mainMenuBullets.push(...bullets);
+      }
+    });
+
+    this.mainMenuBullets = this.mainMenuBullets.filter((b) => {
+      b.update(deltaTime);
+
+      if (b.isDead()) {
+        this.scene.remove(b.object);
+
+        return false;
+      }
+
+      return true;
+    });
   }
 
   initBosses() {
@@ -518,7 +593,10 @@ export class GameManager {
 
     this.addMeshToWorld(this.player.object, 100);
 
-    const particleTrailPos = this.player.object.position.clone(0, -0.3, 1);
+    const particleTrailPos = this.player.object.position.clone(0, -0.3, 9);
+
+    particleTrailPos.z = 9.5;
+
     this.playerParticleTrail = new ParticleSystem(
       this.scene,
       1,
@@ -898,15 +976,20 @@ export class GameManager {
     const delta = this.clock.getDelta();
 
     this.updateParticleSystems();
+
     this.updateCamera();
-    this.updateBosses();
-    this.updatePlayer(delta);
-    this.updateBullets(delta);
-    this.updateBoxes();
-    this.updateLevelManager();
-    this.updatePowerups();
+    if (this.isPlaying) {
+      this.updateBosses();
+      this.updatePlayer(delta);
+      this.updateBullets(delta);
+      this.updateBoxes();
+      this.updateLevelManager();
+      this.updatePowerups();
+      this.updateEnemies();
+    } else {
+      this.updateMainMenu(delta);
+    }
     this.updateWorld();
-    this.updateEnemies();
 
     this.renderer.render(this.scene, this.camera);
   }

@@ -28,8 +28,9 @@ export class LevelManager {
   }
 
   startActiveFloor() {
-    this.floor.generateRooms();
     this.player.object.position.set(0, 0, 0);
+
+    this.floor.generateRooms();
   }
 
   update() {

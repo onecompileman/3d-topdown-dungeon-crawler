@@ -39,3 +39,26 @@ in-game-ui-bottom {
   z-index: 999;
   width: 100%;
 }
+
+main-menu,
+loading-screen,
+load-game,
+about-screen,
+pause-screen {
+  position: absolute;
+  bottom: 0;
+  height: 100vh;
+  left: 0;
+  z-index: 999;
+  width: 100%;
+}
+
+in-game-ui-bottom,
+in-game-map-ui,
+in-game-ui-top,
+main-menu,
+about-screen,
+load-game,
+pause-screen {
+  display: none;
+}
