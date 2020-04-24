@@ -30,6 +30,10 @@ export class Floor {
     this.gemTakeDamage = 0;
     this.gemTakeDamageRate = 3;
 
+    this.damageTaken = 0;
+    this.bulletsFired = 0;
+    this.bulletsHit = 0;
+
     this.roomAllPlatforms = new Object3D();
 
     this.currentRoom = null;
@@ -102,6 +106,7 @@ export class Floor {
 
     this.roomGrid.forEach((r, rI) => {
       r.forEach((c, cI) => {
+        if (c !== 0) {
         const position = new Vector3(cI * 70, -2, rI * 70);
         const roomIndex = rI + '-' + cI;
         const pathWays = c;
@@ -152,6 +157,7 @@ export class Floor {
         });
 
         this.rooms.push(room);
+        }
       });
     });
 
@@ -349,9 +355,10 @@ export class Floor {
           this.currentRoom.roomCleared = true;
         }
       } else {
-        if (this.currentRoom.currentWave < this.currentRoom.waves) {
+        if (this.currentRoom.currentWave < this.currentRoom.waves && !this.currentRoom.isGeneratingWave) {
+          this.currentRoom.isGeneratingWave = true;
           this.currentRoom.currentWave++;
-
+          console.log('here1');
           this.currentRoom.generateWaveEnemies();
 
           this.currentRoom.enemies.forEach((enemy) => {
@@ -364,6 +371,13 @@ export class Floor {
 
             this.addMeshToWorld(enemy.object, 20);
           });
+
+          console.log('here1');
+
+
+          setTimeout(() => {
+            this.currentRoom.isGeneratingWave = false;
+          }, 200);
         } else {
           if (!this.currentRoom.roomCleared && this.currentRoom.isLastRoom) {
             this.currentRoom.roomOpened = true;

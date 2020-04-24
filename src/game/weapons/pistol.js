@@ -2,7 +2,7 @@ import { PlayerBullet } from '../game-objects/player-bullet';
 
 export class Pistol {
   constructor() {
-    this.damage = 1;
+    this.damage = 2;
 
     this.isInfinite = true;
 

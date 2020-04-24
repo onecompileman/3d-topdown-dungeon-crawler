@@ -12,11 +12,17 @@ import {
   Quaternion,
   Euler,
 } from 'three';
-import { EnemyBullet } from './enemy-bullet';
+import {
+  EnemyBullet
+} from './enemy-bullet';
 
 import * as C from 'cannon';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
 
 export class FollowEnemy1 {
   constructor(options) {
@@ -25,7 +31,9 @@ export class FollowEnemy1 {
       color: 0x000000,
     });
 
-    const lineMaterial = new LineBasicMaterial({ color: 0x555555 });
+    const lineMaterial = new LineBasicMaterial({
+      color: 0x555555
+    });
     const line = new Line(geometry, lineMaterial);
 
     this.line = line;
@@ -42,6 +50,7 @@ export class FollowEnemy1 {
     this.takeDamageRate = 3;
 
     this.canShoot = options.canShoot || false;
+    this.bulletType = options.bulletType || EnemyBulletTypes.DESTRUCTIBLE;
     this.fireDistance = options.fireDistance || 18;
     this.fireCooldown = options.fireRate || 40;
     this.fireRate = options.fireRate || 40;
@@ -111,7 +120,7 @@ export class FollowEnemy1 {
       this.bulletSpeed,
       25,
       this.damage,
-      EnemyBulletTypes.DESTRUCTIBLE
+      this.bulletType
     );
 
     this.fireCooldown = this.fireRate;

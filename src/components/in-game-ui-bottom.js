@@ -96,6 +96,7 @@ export class InGameUIBottom extends HTMLElement {
         cooldown: 0,
         bullets: 5,
       },
+      weapons: [1],
     };
 
     this.renderHTML();
@@ -171,6 +172,38 @@ export class InGameUIBottom extends HTMLElement {
     return this.prop.homing;
   }
 
+  set weapons(weapons) {
+    this.prop.weapons = weapons;
+
+    if (weapons.includes(1)) {
+      this.root.querySelector('#rifle').style.display = 'flex';
+    } else {
+      this.root.querySelector('#rifle').style.display = 'none';
+    }
+
+    if (weapons.includes(2)) {
+      this.root.querySelector('#shotgun').style.display = 'flex';
+    } else {
+      this.root.querySelector('#shotgun').style.display = 'none';
+    }
+
+    if (weapons.includes(3)) {
+      this.root.querySelector('#tesla').style.display = 'flex';
+    } else {
+      this.root.querySelector('#tesla').style.display = 'none';
+    }
+
+    if (weapons.includes(4)) {
+      this.root.querySelector('#homing').style.display = 'flex';
+    } else {
+      this.root.querySelector('#homing').style.display = 'none';
+    }
+  }
+
+  get weapons() {
+    return this.prop.weapons;
+  }
+
   renderHTML() {
     this.root.innerHTML = `
             ${componentStyles}
@@ -239,7 +272,7 @@ export class InGameUIBottom extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['dash', 'rifle', 'shotgun', 'tesla', 'homing'];
+    return ['dash', 'rifle', 'shotgun', 'tesla', 'homing', 'weapons'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -257,7 +290,10 @@ export class InGameUIBottom extends HTMLElement {
         this.tesla = newValue;
         break;
       case 'homing':
-        this.onMenuCallback = newValue;
+        this.homing = newValue;
+        break;
+      case 'weapons':
+        this.weapons = newValue;
         break;
     }
   }

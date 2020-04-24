@@ -5,6 +5,7 @@ import {
   Mesh,
   Box3,
   Color,
+  Line,
 } from 'three';
 
 export class Box {
@@ -12,17 +13,10 @@ export class Box {
     const geometry = new BoxBufferGeometry(3.5, 3.5, 3.5);
 
     const material = new MeshLambertMaterial({
-      color: destructable ? 0x111111 : 0xffffff,
-    });
-
-    const lineMaterial = new LineBasicMaterial({
-      color: destructable ? 0xfefefe : 0x000000,
+      color: destructable ? 0x111111 : 0xfefefe,
     });
 
     this.object = new Mesh(geometry, material);
-    this.line = new Mesh(geometry, lineMaterial);
-
-    this.object.add(this.line);
 
     this.object.position.copy(position.clone());
 
@@ -42,13 +36,12 @@ export class Box {
     this.bBox.setFromObject(this.object);
 
     if (this.destructable) {
-      if (this.takeDamage >= 0) {
-        this.object.material.color.set(new Color(0xffffff));
+      if (this.takeDamage > 0) {
+        this.object.material.color.set(0xfefefe);
       } else {
-        this.object.material.color.set(new Color(0x111111));
+        this.object.material.color.set(0x111111);
       }
     }
-
     this.takeDamage--;
   }
 

@@ -44,6 +44,8 @@ export class SoundManager {
     audio.setVolume(volume);
     audio.setLoop(isLoop);
     audio.play();
+
+    return audio;
   }
 
   stopAudio(audioName) {

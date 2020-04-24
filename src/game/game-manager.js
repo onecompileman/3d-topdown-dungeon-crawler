@@ -79,6 +79,7 @@ export class GameManager {
     this.render();
     // this.initLevelManager();
     this.isPlaying = false;
+    this.isMainMenu = true;
     // this.soundManager.playAudio('weightOfTheWorld', 0.3, true);
   }
 
@@ -92,6 +93,57 @@ export class GameManager {
     const mainMenu = this.screenManager.screens.mainMenu;
     const aboutScreen = this.screenManager.screens.aboutScreen;
     const loadGame = this.screenManager.screens.loadGame;
+    const levelSelect = this.screenManager.screens.levelSelect;
+    const inGameUITop = this.screenManager.screens.inGameUITop;
+    const pauseScreen = this.screenManager.screens.pauseScreen;
+    const areYouSure = this.screenManager.screens.areYouSure;
+    const floorCleared = this.screenManager.screens.floorCleared;
+
+    floorCleared.quitCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('levelSelect');
+      this.isPlaying = false;
+
+      this.initMainMenu();
+      this.levelManager.floor.destroyFloor();
+    };
+
+    inGameUITop.onMenuCallback = () => {
+      this.isPlaying = false;
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('pauseScreen');
+      this.background.pause();
+    };
+
+    pauseScreen.quitCallback = () => {
+      areYouSure.message = 'You are trying to go back to the level select';
+
+      areYouSure.confirmCallback = () => {
+        this.screenManager.hideAllScreens();
+        this.screenManager.showScreen('levelSelect');
+        this.isPlaying = false;
+
+        this.initMainMenu();
+        this.levelManager.floor.destroyFloor();
+        this.background.stop();
+      };
+
+      areYouSure.cancelCallback = () => {
+        this.screenManager.hideAllScreens();
+        this.screenManager.showScreen('inGameUITop');
+        this.screenManager.showScreen('inGameUIBottom');
+        this.screenManager.showScreen('inGameMapUI');
+        this.isPlaying = true;
+      };
+    };
+
+    pauseScreen.resumeCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('inGameUITop');
+      this.screenManager.showScreen('inGameUIBottom');
+      this.screenManager.showScreen('inGameMapUI');
+      this.isPlaying = true;
+    };
 
     aboutScreen.closeCallback = () => {
       this.screenManager.hideAllScreens();
@@ -121,19 +173,90 @@ export class GameManager {
       loadGame.saveSlots = this.gameState.saveSlots;
       this.screenManager.showScreen('loadGame');
     };
+
+    levelSelect.backCallback = () => {
+      this.screenManager.hideAllScreens();
+      loadGame.newGame = false;
+      loadGame.saveSlots = this.gameState.saveSlots;
+      this.screenManager.showScreen('loadGame');
+    };
+
+    levelSelect.levelSelectCallback = (level, floor, activeSlot) => {
+      this.play(level - 1, floor - 1, activeSlot);
+    };
   }
 
-  play() {
-    this.initLevelManager();
+  play(level, floor, activeSlot) {
+    this.isPlaying = true;
+    this.isMainMenu = false;
+
+    this.player.weaponManager.unlockedWeapons = this.gameState.saveSlots[
+      activeSlot
+    ].weapons;
+    this.screenManager.screens.inGameUIBottom.weapons = this.gameState.saveSlots[
+      activeSlot
+    ].weapons;
+
+    this.initLevelManager(level, floor, activeSlot);
+    this.destroyMainMenu();
+
+    this.screenManager.hideAllScreens();
+    this.screenManager.showScreen('inGameUITop');
+    this.screenManager.showScreen('inGameUIBottom');
+    this.screenManager.showScreen('inGameMapUI');
+
+    this.background = this.soundManager.playAudio(
+      randomArrayElement(['weightOfTheWorld', 'beautifulSong', 'cityRuins']),
+      0.2,
+      true
+    );
+
+    this.background.onEnded = () => {
+      if (this.isPlaying) {
+        this.background = this.soundManager.playAudio(
+          randomArrayElement([
+            'weightOfTheWorld',
+            'beautifulSong',
+            'cityRuins',
+          ]),
+          0.2,
+          true
+        );
+      }
+    };
   }
 
-  initLevelManager() {
+  initLevelManager(level, floor, activeSlot) {
     this.levelManager = new LevelManager({
       player: this.player,
       scene: this.scene,
       world: this.world,
       mapUI: this.screenManager.screens.inGameMapUI,
+      screenManager: this.screenManager,
+      activeLevelIndex: level,
+      activeFloorIndex: floor,
+      activeSlotName: activeSlot,
     });
+
+    this.levelManager.onFloorCleared = () => {
+      this.isPlaying = false;
+      this.soundManager.playAudio('success');
+      this.background.pause();
+    };
+
+    this.levelManager.onFloorResumed = () => {
+      this.isPlaying = true;
+      this.background.play();
+    };
+
+    this.levelManager.onQuit = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('levelSelect');
+      this.isPlaying = false;
+
+      this.initMainMenu();
+      this.levelManager.floor.destroyFloor();
+    };
 
     this.levelManager.startActiveFloor();
   }
@@ -155,6 +278,16 @@ export class GameManager {
     this.mainMenuFloor.initMainMenu();
 
     this.mainMenuBullets = [];
+  }
+
+  destroyMainMenu() {
+    this.mainMenuBullets.forEach((bullet) => {
+      this.scene.remove(bullet.object);
+    });
+
+    this.mainMenuBullets = [];
+
+    this.mainMenuFloor.destroyMainMenuFloor();
   }
 
   updateMainMenu(deltaTime) {
@@ -298,6 +431,8 @@ export class GameManager {
               this.player.bBox.intersectsBox(enemy.bBox)
             ) {
               this.player.takeDamage(enemy.damage);
+              this.soundManager.playAudio('hit');
+              this.levelManager.floor.damageTaken += enemy.damage;
               enemy.attackCooldown = enemy.attackRate;
               this.screenManager.screens.inGameUITop.life = this.player.life;
             }
@@ -312,6 +447,7 @@ export class GameManager {
           }
 
           if (enemy.isDead()) {
+            this.soundManager.playAudio('bossExplode');
             const particleSystem = new ParticleSystem(
               this.scene,
               20,
@@ -381,6 +517,8 @@ export class GameManager {
               0,
               100
             );
+
+            this.soundManager.playAudio('life');
 
             this.scene.remove(powerup.object);
 
@@ -477,6 +615,8 @@ export class GameManager {
               this.player.bBox.intersectsBox(enemy.bBox)
             ) {
               this.player.takeDamage(enemy.damage);
+              this.soundManager.playAudio('hit');
+              this.levelManager.floor.damageTaken += enemy.damage;
               enemy.attackCooldown = enemy.fireRate;
               this.screenManager.screens.inGameUITop.life = this.player.life;
             }
@@ -502,6 +642,7 @@ export class GameManager {
           }
 
           if (enemy.isDead()) {
+            this.soundManager.playAudio('enemyExplode');
             const particleSystem = new ParticleSystem(
               this.scene,
               14,
@@ -568,6 +709,8 @@ export class GameManager {
     this.soundManager = new SoundManager();
 
     this.soundManager.addListenerToCamera(this.camera);
+
+    this.background = null;
   }
 
   initClock() {
@@ -638,6 +781,7 @@ export class GameManager {
     );
 
     this.player.onFire = (bullets) => {
+      this.levelManager.floor.bulletsFired += bullets.length;
       this.playerBullets.push(...bullets);
       bullets.forEach((bullet) => {
         this.scene.add(bullet.object);
@@ -765,6 +909,9 @@ export class GameManager {
           // console.log('here', this.player.bBox);
           b.isCollided = true;
           this.player.takeDamage(b.damage);
+          this.soundManager.playAudio('hit');
+
+          this.levelManager.floor.damageTaken += b.damage;
 
           this.screenManager.screens.inGameUITop.life = this.player.life;
         }
@@ -821,6 +968,7 @@ export class GameManager {
       if (this.levelManager.floor.gem) {
         if (this.levelManager.floor.gemBbox.intersectsBox(b.bBox)) {
           this.levelManager.floor.gemLife--;
+          this.levelManager.floor.bulletsHit++;
           b.isCollided = true;
         }
       }
@@ -870,6 +1018,7 @@ export class GameManager {
             b.isCollided = true;
           } else if (!boss.shieldEnabled && boss.bBox.intersectsBox(b.bBox)) {
             boss.takeDamage(b.damage);
+            this.levelManager.floor.bulletsHit++;
             b.isCollided = true;
           }
         }
@@ -890,12 +1039,15 @@ export class GameManager {
           enemyCollided = e;
           if (!e.has2ndObject) {
             e.takeDamage(b.damage);
+            this.levelManager.floor.bulletsHit++;
           }
         }
         if (e.has2ndObject) {
           if (!b.isCollided && b.bBox.intersectsBox(e.bBox2)) {
             b.isCollided = true;
             e.takeDamage(b.damage);
+            this.levelManager.floor.bulletsHit++;
+
             enemyCollided = e;
           }
         }
@@ -1001,7 +1153,7 @@ export class GameManager {
       this.updateLevelManager();
       this.updatePowerups();
       this.updateEnemies();
-    } else {
+    } else if (this.isMainMenu) {
       this.updateMainMenu(delta);
     }
     this.updateWorld();

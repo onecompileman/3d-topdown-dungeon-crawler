@@ -27,6 +27,7 @@ export class GameStateService {
     this.saveSlots[slotName] = {
       level: 1,
       floor: 1,
+      weapons: [0],
       floors: [],
     };
 
@@ -35,6 +36,16 @@ export class GameStateService {
 
   isSlotExisting(slotName) {
     return !isEmpty(this.saveSlots[slotName]);
+  }
+
+  saveWeapons(weapon, slotName) {
+    const weapons = this.saveSlots[slotName].weapons;
+
+    if (!weapons.includes(weapon)) {
+      weapons.push(weapon);
+
+      localStorage.setItem(slotName, JSON.stringify(this.saveSlots[slotName]));
+    }
   }
 
   saveFloor(floorData, slotName) {

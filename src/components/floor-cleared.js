@@ -106,6 +106,8 @@ const componentStyles = `
     </style>
 `;
 
+import { WeaponTypes } from '../enums/weapons-types.enum';
+
 export class FloorCleared extends HTMLElement {
   constructor() {
     super();
@@ -113,9 +115,58 @@ export class FloorCleared extends HTMLElement {
     this.prop = {
       quitCallback: () => {},
       nextCallback: () => {},
+      weaponUnlocked: null,
+      floorData: null,
     };
     this.renderHTML();
     this.bindEvents();
+  }
+
+  get floorData() {
+    return this.prop.floorData;
+  }
+
+  set floorData(floorData) {
+    this.prop.floorData = floorData;
+    this.root.querySelector('#rating').innerHTML = floorData.rating;
+    this.root.querySelector('#damageTaken').innerHTML = floorData.damageTaken;
+    this.root.querySelector('#bulletsFired').innerHTML = floorData.bulletsFired;
+    this.root.querySelector('#bulletsHit').innerHTML = floorData.bulletsHit;
+  }
+
+  get weaponUnlocked() {
+    return this.prop.weaponUnlocked;
+  }
+
+  set weaponUnlocked(weaponUnlocked) {
+    this.prop.weaponUnlocked = weaponUnlocked;
+
+    if (!weaponUnlocked) {
+      this.root.querySelector('#weaponContainer').style.display = 'none';
+    } else {
+      this.root.querySelector('#weaponContainer').style.display = 'flex';
+      const image = this.root.querySelector('#weapon');
+      const weaponText = this.root.querySelector('#weaponText');
+
+      switch (weaponUnlocked) {
+        case WeaponTypes.RIFLE:
+          image.src = 'assets/icons/rifle.png';
+          weaponText.innerHTML = 'Rifle';
+          break;
+        case WeaponTypes.SHOTGUN:
+          image.src = 'assets/icons/shotgun.png';
+          weaponText.innerHTML = 'Shotgun';
+          break;
+        case WeaponTypes.TESLA:
+          image.src = 'assets/icons/tesla.png';
+          weaponText.innerHTML = 'Particle Gun';
+          break;
+        case WeaponTypes.HOMING:
+          image.src = 'assets/icons/homing.png';
+          weaponText.innerHTML = 'Homing Missles';
+          break;
+      }
+    }
   }
 
   get quitCallback() {
@@ -177,7 +228,7 @@ export class FloorCleared extends HTMLElement {
                             </span>
                             <div class="weapon-container">
                                 <img src="assets/icons/rifle.png" height="70" width="70" alt="Weapon" id="weapon">
-                                <span class="weapon-text">
+                                <span id="weaponText" class="weapon-text">
                                     Rifle
                                 </span>
                             </div>
@@ -199,7 +250,7 @@ export class FloorCleared extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['quitCallback', 'nextCallback'];
+    return ['quitCallback', 'nextCallback', 'weaponUnlocked', 'floorData'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -209,6 +260,12 @@ export class FloorCleared extends HTMLElement {
         break;
       case 'nextCallback':
         this.nextCallback = newValue;
+        break;
+      case 'weaponUnlocked':
+        this.weaponUnlocked = newValue;
+        break;
+      case 'floorData':
+        this.floorData = newValue;
         break;
     }
   }

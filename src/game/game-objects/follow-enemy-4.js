@@ -16,9 +16,15 @@ import {
 } from 'three';
 
 import * as C from 'cannon';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
-import { EnemyBullet } from './enemy-bullet';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
 
 export class FollowEnemy4 {
   constructor(options) {
@@ -27,7 +33,9 @@ export class FollowEnemy4 {
       color: 0xeeeeee,
     });
 
-    const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
+    const lineMaterial = new LineBasicMaterial({
+      color: 0x000000
+    });
     const line = new Line(geometry, lineMaterial);
 
     this.line = line;
@@ -62,6 +70,7 @@ export class FollowEnemy4 {
     this.fireDistance = options.fireDistance || 18;
     this.fireCooldown = options.fireRate || 40;
     this.fireRate = options.fireRate || 40;
+    this.bulletType = options.bulletType || EnemyBulletTypes.DESTRUCTIBLE;
     this.bulletSpeed = options.bulletSpeed || 12;
     this.damage = options.damage || 5;
 
@@ -106,7 +115,7 @@ export class FollowEnemy4 {
       this.bulletSpeed,
       25,
       this.damage,
-      EnemyBulletTypes.DESTRUCTIBLE
+      this.bulletType
     );
 
     this.fireCooldown = this.fireRate;

@@ -60,6 +60,8 @@ export class Room {
     this.roomOpened = true;
     this.isAdded = true;
 
+    this.isGeneratingWave = false;
+
     this.generateSideBlockers();
     this.generatePathways();
     this.generatePaths();

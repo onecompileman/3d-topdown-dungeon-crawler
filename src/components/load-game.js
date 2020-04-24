@@ -87,7 +87,7 @@ export class LoadGame extends HTMLElement {
       const saveSlot = this.root.querySelector(`#${slotName}`);
 
       if (floors) {
-        const progress = Math.round(floors.length / 25) * 100;
+        const progress = Math.round(floors.length / 25 * 100);
 
         saveSlot.querySelector(
           '.progress'
@@ -133,14 +133,16 @@ export class LoadGame extends HTMLElement {
 
         if (gameState.isSlotExisting(slotName)) {
           if (!this.prop.newGame) {
-            gameState.initSlot(slotName);
             screenManager.hideAllScreens();
             screenManager.showScreen('levelSelect');
+            screenManager.screens.levelSelect.floors =
+              gameState.saveSlots[slotName].floors;
+            screenManager.screens.levelSelect.activeSlotName = slotName;
           } else {
             const areYouSureComponent = document.querySelector('are-you-sure');
             areYouSureComponent.style.display = 'block';
 
-            areYouSureComponent.message = `${slotName} is already taken, this will data there!`;
+            areYouSureComponent.message = `${slotName} is already taken, this will delete the data there!`;
             areYouSureComponent.cancelCallback = () => {
               areYouSureComponent.style.display = 'none';
             };
@@ -148,6 +150,9 @@ export class LoadGame extends HTMLElement {
               gameState.initSlot(slotName);
               screenManager.hideAllScreens();
               screenManager.showScreen('levelSelect');
+              screenManager.screens.levelSelect.floors =
+                gameState.saveSlots[slotName].floors;
+              screenManager.screens.levelSelect.activeSlotName = slotName;
             };
           }
         } else {
@@ -155,6 +160,9 @@ export class LoadGame extends HTMLElement {
             gameState.initSlot(slotName);
             screenManager.hideAllScreens();
             screenManager.showScreen('levelSelect');
+            screenManager.screens.levelSelect.floors =
+                gameState.saveSlots[slotName].floors;
+            screenManager.screens.levelSelect.activeSlotName = slotName;
           }
         }
       });

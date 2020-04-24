@@ -196,6 +196,12 @@ const componentStyles = `
             display: flex;
         }
 
+        .not-allowed {
+            cursor: not-allowed !important;
+            background-color: #68665F;
+        }
+  
+
     </style>
 `;
 
@@ -204,10 +210,51 @@ export class LevelSelect extends HTMLElement {
     super();
     this.root = this.attachShadow({ mode: 'open' });
     this.prop = {
-      levelSelectCallback: (level, floor) => {},
+      levelSelectCallback: (level, floor, slotName) => {},
       backCallback: () => {},
+      floors: [],
+      activeSlotName: '',
+      activeLevelIndex: '1-1',
     };
     this.renderHTML();
+    this.bindEvents();
+  }
+
+  get activeSlotName() {
+    return this.prop.activeSlotName;
+  }
+
+  set activeSlotName(activeSlotName) {
+    this.prop.activeSlotName = activeSlotName;
+  }
+
+  get floors() {
+    return this.prop.floors;
+  }
+
+  set floors(floors) {
+    this.prop.floors = floors;
+
+    const percentage = Math.round(floors.length / 25 * 100);
+
+    this.root.querySelector('#progress').style.width = percentage + '%';
+    this.root.querySelector('#progressText').innerHTML = percentage + '%';
+
+    const levelItemsEl = this.root.querySelectorAll('.level-item');
+
+    for (let i = 0; i < levelItemsEl.length; i++) {
+      levelItemsEl[i].classList.remove('not-allowed');
+      const id = levelItemsEl[i].getAttribute('id');
+      const [level, floor] = id.split('-');
+
+      if (i > floors.length && i !== 0) {
+        levelItemsEl[i].classList.add('not-allowed');
+      }
+
+      if (i === floors.length || (floor.length === 25 && i === 24)) {
+        levelItemsEl[i].click();
+      }
+    }
   }
 
   get levelSelectCallback() {
@@ -224,6 +271,52 @@ export class LevelSelect extends HTMLElement {
 
   set backCallback(backCallback) {
     this.prop.backCallback = backCallback;
+  }
+
+  bindEvents() {
+    const levelItemsEl = this.root.querySelectorAll('.level-item');
+
+    for (let i = 0; i < levelItemsEl.length; i++) {
+      levelItemsEl[i].addEventListener('click', () => {
+        if (!levelItemsEl[i].classList.contains('not-allowed')) {
+          for (let j = 0; j < levelItemsEl.length; j++) {
+            levelItemsEl[j].classList.remove('active');
+          }
+
+          levelItemsEl[i].classList.add('active');
+
+          const id = levelItemsEl[i].getAttribute('id');
+          const [level, floor] = id.split('-');
+
+          const ff = this.prop.floors.find(
+            (f) => f.floor == +floor + 1 && f.level == +level + 1
+          );
+
+          if (ff) {
+            this.root.querySelector('#rating').innerHTML = ff.rating;
+            this.root.querySelector('#damageTaken').innerHTML = ff.damageTaken;
+            this.root.querySelector('#bulletsFired').innerHTML =
+              ff.bulletsFired;
+            this.root.querySelector('#bulletsHit').innerHTML = ff.bulletsHit;
+          } else {
+            this.root.querySelector('#rating').innerHTML = 'N/A';
+            this.root.querySelector('#damageTaken').innerHTML = 'N/A';
+            this.root.querySelector('#bulletsFired').innerHTML = 'N/A';
+            this.root.querySelector('#bulletsHit').innerHTML = 'N/A';
+          }
+
+          this.prop.activeLevelIndex = `${+level + 1}-${+floor + 1}`;
+        }
+      });
+    }
+
+    this.root
+      .querySelector('#back')
+      .addEventListener('click', () => this.prop.backCallback());
+    this.root.querySelector('#play').addEventListener('click', () => {
+      const [level, floor] = this.prop.activeLevelIndex.split('-');
+      this.prop.levelSelectCallback(+level, +floor, this.prop.activeSlotName);
+    });
   }
 
   renderHTML() {
@@ -308,7 +401,7 @@ export class LevelSelect extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['levelSelectCallback', 'backCallback'];
+    return ['levelSelectCallback', 'backCallback', 'floors', 'activeSlotName'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -318,6 +411,12 @@ export class LevelSelect extends HTMLElement {
         break;
       case 'backCallback':
         this.backCallback = newValue;
+        break;
+      case 'floors':
+        this.floors = newValue;
+        break;
+      case 'activeSlotName':
+        this.activeSlotName = newValue;
         break;
     }
   }

@@ -9,6 +9,8 @@ export class WeaponManager {
   constructor(inGameUIBottom) {
     this.inGameUIBottom = inGameUIBottom;
 
+    this.unlockedWeapons = [0];
+
     this.weapons = {
       pistol: new Pistol(),
       rifle: new Rifle(),
@@ -26,16 +28,20 @@ export class WeaponManager {
         this.activeWeapon = this.weapons.pistol;
         break;
       case WeaponTypes.RIFLE:
-        this.activeWeapon = this.weapons.rifle;
+        if (this.unlockedWeapons.includes(1))
+          this.activeWeapon = this.weapons.rifle;
         break;
       case WeaponTypes.SHOTGUN:
-        this.activeWeapon = this.weapons.shotgun;
+        if (this.unlockedWeapons.includes(2))
+          this.activeWeapon = this.weapons.shotgun;
         break;
       case WeaponTypes.TESLA:
-        this.activeWeapon = this.weapons.tesla;
+        if (this.unlockedWeapons.includes(3))
+          this.activeWeapon = this.weapons.tesla;
         break;
       case WeaponTypes.HOMING:
-        this.activeWeapon = this.weapons.homing;
+        if (this.unlockedWeapons.includes(4))
+          this.activeWeapon = this.weapons.homing;
         break;
     }
 

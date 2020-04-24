@@ -4,7 +4,7 @@ import { WeaponTypes } from '../../enums/weapons-types.enum';
 
 export class Rifle {
   constructor() {
-    this.damage = 2.5;
+    this.damage = 3.5;
 
     this.maxDistance = 30;
     this.speed = 40;
