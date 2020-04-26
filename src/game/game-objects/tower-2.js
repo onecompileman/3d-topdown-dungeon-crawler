@@ -6,27 +6,22 @@ import {
   Box3,
   BoxBufferGeometry,
 } from 'three';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
-import { EnemyBullet } from './enemy-bullet';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
 
 export class Tower2 {
   constructor(options) {
-    const geometry = new CylinderBufferGeometry(
-      0.7,
-      0.7,
-      3,
-      8,
-      1,
-      false,
-      0,
-      6.3
-    );
-    const material = new MeshLambertMaterial({
-      color: 0x111111,
-    });
+    this.objectPoolManager = options.objectPoolManager;
 
-    this.object = new Mesh(geometry, material);
+    this.poolItem = this.objectPoolManager.allocate('towerBody');
+    this.object = this.poolItem.object;
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
 
     this.life = options.life || 30;
@@ -42,19 +37,18 @@ export class Tower2 {
     this.takeDamageRate = 3;
 
     this.shields = [];
+    this.shieldPoolItems = [];
     this.shieldBbox = [];
 
     const shieldCount = options.shieldCount || 2;
 
     for (let i = 0; i < shieldCount; i++) {
-      const geometry1 = new BoxBufferGeometry(0.85, 0.85, 0.15);
-      const material1 = new MeshLambertMaterial({
-        color: 0xeeeeee,
-      });
-
-      const shield1 = new Mesh(geometry1, material1);
+      this.objectPoolManager = options.objectPoolManager;
+      const shieldPoolItem = this.objectPoolManager.allocate('towerShield');
+      const shield1 = shieldPoolItem.object;
       const shieldBbox = new Box3().setFromObject(shield1);
       this.shields.push(shield1);
+      this.shieldPoolItems.push(shieldPoolItem);
       this.shieldBbox.push(shieldBbox);
     }
 
@@ -139,7 +133,8 @@ export class Tower2 {
         this.bulletSpeed,
         25,
         this.damage,
-        this.bulletType
+        this.bulletType,
+        this.objectPoolManager
       );
 
       bullets.push(bullet);

@@ -1,5 +1,13 @@
-import { Vector3, MathUtils } from 'three';
-import { Particle } from './particle';
+import {
+  Vector3,
+  MathUtils
+} from 'three';
+import {
+  Particle
+} from './particle';
+import {
+  disposeGeometry
+} from '../../../utils/dispose-geometry';
 
 export class ParticleSystem {
   constructor(
@@ -14,7 +22,8 @@ export class ParticleSystem {
     minVel,
     maxVel,
     type,
-    loop = true
+    loop = true,
+    objectPoolManager
   ) {
     this.scene = scene;
     this.count = count;
@@ -28,6 +37,7 @@ export class ParticleSystem {
     this.maxVel = maxVel;
     this.type = type;
     this.loop = loop;
+    this.objectPoolManager = objectPoolManager;
 
     this.particles = [];
   }
@@ -80,9 +90,10 @@ export class ParticleSystem {
         this.color.clone(),
         velocity,
         this.size,
-        this.type
+        this.type,
+        this.objectPoolManager
       );
-      this.scene.add(particle.object);
+      // this.scene.add(particle.object);
       this.particles.push(particle);
     }
   }
@@ -91,7 +102,12 @@ export class ParticleSystem {
     this.particles = this.particles.filter((particle) => {
       particle.update();
       if (particle.isDead()) {
-        this.scene.remove(particle.object);
+        // disposeGeometry(particle.object.geometry);
+        // particle.object.material.dispose();
+
+        // this.scene.remove(particle.object);
+
+        this.objectPoolManager.free(particle.poolItem);
       }
       return !particle.isDead();
     });

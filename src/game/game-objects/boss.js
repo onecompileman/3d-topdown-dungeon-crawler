@@ -13,22 +13,32 @@ import {
   MathUtils,
 } from 'three';
 import * as C from 'cannon';
-import { randomArrayElement } from '../../utils/random-array-element';
-import { BossPhases } from '../../enums/boss-phases.enum';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
-import { EnemyBullet } from './enemy-bullet';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
+import {
+  randomArrayElement
+} from '../../utils/random-array-element';
+import {
+  BossPhases
+} from '../../enums/boss-phases.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
 
 export class Boss {
   constructor(options) {
-    const geometry = new SphereBufferGeometry(1.3, 12, 9);
-    const material = new MeshLambertMaterial({
-      color: 0x111111,
-    });
+    this.objectPoolManager = options.objectPoolManager;
+
+    this.poolItem = this.objectPoolManager.allocate('boss');
+    this.poolItemLine = this.objectPoolManager.allocate('bossLine');
 
     this.options = options;
 
-    this.object = new Mesh(geometry, material);
+    this.object = this.poolItem.object;
 
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
     this.object.position.y = -1.2;
@@ -74,12 +84,9 @@ export class Boss {
     this.takeDamageCooldown = 0;
     this.takeDamageRate = 3;
 
-    const lineGeometry = new SphereBufferGeometry(1.7, 10, 8);
-    const lineMaterial = new LineBasicMaterial({
-      color: 0xdedede,
-    });
+    this.line = this.poolItemLine.object;
 
-    this.line = new Line(lineGeometry, lineMaterial);
+    this.line.position.copy(this.object.position);
 
     this.bBox = new Box3().setFromObject(this.object);
     this.shieldBbox = new Box3().setFromObject(this.line);
@@ -130,6 +137,8 @@ export class Boss {
 
     this.object.body.velocity = new C.Vec3(vel.x, 0, vel.z);
     this.object.position.copy(this.object.body.position);
+    this.line.position.copy(this.object.position);
+    this.line.rotation.copy(this.object.rotation);  
 
     const obj = this.object.clone();
     obj.scale.set(0.75, 0.75, 0.75);
@@ -218,7 +227,8 @@ export class Boss {
         this.bulletSpeed,
         25,
         this.damage,
-        EnemyBulletTypes.RANDOM
+        EnemyBulletTypes.RANDOM,
+        this.objectPoolManager
       );
 
       bullets.push(bullet);

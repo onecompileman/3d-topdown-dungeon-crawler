@@ -26,23 +26,16 @@ import {
 
 export class FollowEnemy1 {
   constructor(options) {
-    const geometry = new ConeBufferGeometry(5.4, 10, 3, 1, false, 0, 6.3);
-    const material = new MeshLambertMaterial({
-      color: 0x000000,
-    });
 
-    const lineMaterial = new LineBasicMaterial({
-      color: 0x555555
-    });
-    const line = new Line(geometry, lineMaterial);
+    this.objectPoolManager = options.objectPoolManager;
 
-    this.line = line;
-    this.object = new Mesh(geometry, material);
+    this.poolItem = this.objectPoolManager.allocate('followEnemy1');
+    this.object = this.poolItem.object;
     this.object.scale.set(0.13, 0.13, 0.13);
     this.object.rotation.x = -Math.PI / 2;
 
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
-    this.object.castShadow = true;
+    // this.object.castShadow = true;
 
     this.speed = options.speed || 3;
 
@@ -88,7 +81,7 @@ export class FollowEnemy1 {
     this.object.body.velocity.copy(new C.Vec3(vel.x, 0, vel.z));
 
     this.object.position.copy(this.object.body.position);
-    this.bBox = new Box3().setFromObject(this.object);
+    this.bBox = this.bBox.setFromObject(this.object);
 
     if (this.takeDamageCooldown > 0) {
       this.object.material.color.setHex(0xeeeeee);
@@ -120,7 +113,8 @@ export class FollowEnemy1 {
       this.bulletSpeed,
       25,
       this.damage,
-      this.bulletType
+      this.bulletType,
+      this.objectPoolManager
     );
 
     this.fireCooldown = this.fireRate;

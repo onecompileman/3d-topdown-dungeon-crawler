@@ -17,6 +17,7 @@ export class LevelManager {
     this.scene = options.scene;
     this.world = options.world;
     this.mapUI = options.mapUI;
+    this.objectPoolManager = options.objectPoolManager;
     this.screenManager = options.screenManager;
 
     this.levelData = Levels;
@@ -42,6 +43,7 @@ export class LevelManager {
       mapUI: options.mapUI,
       floorData: this.activeFloorData,
       enemyStats: this.enemyStats,
+      objectPoolManager: this.objectPoolManager
     });
 
     this.onFloorCleared = () => {};
@@ -52,6 +54,7 @@ export class LevelManager {
   startActiveFloor() {
     this.player.object.body.position.set(0, 1, 0);
     this.player.life = 100;
+    this.screenManager.screens.inGameUITop.life = this.player.life;
     this.floorCleared = false;
 
     this.screenManager.screens.inGameUITop.level = `${
@@ -65,16 +68,42 @@ export class LevelManager {
     if (this.player.life <= 0 && !this.isGameOver) {
       this.isGameOver = true;
 
+      this.onFloorCleared();
+
+
       const areYouSure = this.screenManager.screens.areYouSure;
 
       areYouSure.message = `Game over!! Do you want to restart the floor?`;
       areYouSure.confirmCallback = () => {
+        this.player.object.body.position.set(0, 1, 0);
+        this.scene.remove(this.floor.gem);
+        this.floor.destroyFloor();
+
+        this.floor = new Floor({
+          scene: this.scene,
+          player: this.player,
+          world: this.world,
+          mapUI: this.mapUI,
+          floorData: this.activeFloorData,
+          enemyStats: this.enemyStats,
+          objectPoolManager: this.objectPoolManager
+        });
+
         this.startActiveFloor();
+        this.screenManager.hideAllScreens();
+        this.screenManager.showScreen('inGameUITop');
+        this.screenManager.showScreen('inGameUIBottom');
+        this.screenManager.showScreen('inGameMapUI');
+        this.onFloorResumed();
+        this.isGameOver = false;
       };
 
       areYouSure.cancelCallback = () => {
         this.onQuit();
       };
+
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('areYouSure');
     }
 
     if (this.floor.gemLife <= 0 && !this.floorCleared) {
@@ -100,6 +129,10 @@ export class LevelManager {
           this.activeFloorData.weaponUnlocked,
           this.activeSlotName
         );
+
+        this.player.weaponManager.unlockedWeapons = this.gameState.saveSlots[
+          activeSlot
+        ].weapons;
       }
 
       this.gameState.saveFloor(floorSaveData, this.activeSlotName);
@@ -116,7 +149,17 @@ export class LevelManager {
         this.scene.remove(this.floor.gem);
         this.floor.destroyFloor();
 
+
         this.activeFloorIndex++;
+        if (this.activeFloorIndex === 5) {
+          this.activeFloorIndex = 0;
+          this.activeLevelIndex++;
+
+          if (this.activeLevelIndex === 5) {
+            this.onQuit();
+            return;
+          }
+        }
         this.activeFloorData = this.activeLevelData.floors[
           this.activeFloorIndex
         ];

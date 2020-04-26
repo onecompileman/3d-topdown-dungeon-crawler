@@ -14,29 +14,34 @@ import {
 } from 'three';
 
 import * as C from 'cannon';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
-import { EnemyBullet } from './enemy-bullet';
-import { randomArrayElement } from '../../utils/random-array-element';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  randomArrayElement
+} from '../../utils/random-array-element';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
 
 export class FollowEnemy3 {
   constructor(options) {
-    const geometry = new ConeBufferGeometry(5.4, 10, 3, 1, false, 0, 6.3);
-    const material = new MeshLambertMaterial({
-      color: 0x000000,
-    });
+    this.objectPoolManager = options.objectPoolManager;
 
-    const lineMaterial = new LineBasicMaterial({ color: 0xff6666 });
-    const line = new Line(geometry, lineMaterial);
+    this.poolItem = this.objectPoolManager.allocate('followEnemy3');
+    this.object = this.poolItem.object;
 
-    this.line = line;
     this.scale = options.scale || 1.3;
-    this.object = new Mesh(geometry, material);
-    this.object.scale.set(this.scale, this.scale, this.scale);
+
+    this.object.scale.set(this.scale, this.scale * 0.9, this.scale * 0.9);
     this.object.rotation.x = -Math.PI / 2;
 
     this.object.position.copy(options.position || 0);
-    this.object.castShadow = true;
+    this.object.position.y = -1.5;
+    // this.object.castShadow = true;
 
     this.speed = options.speed || 2.5;
 
@@ -70,7 +75,7 @@ export class FollowEnemy3 {
 
     const object = this.object.clone();
 
-    object.scale.set(this.scale * 0.5, this.scale, this.scale * 0.7);
+    object.scale.set(this.scale * 0.5, this.scale, this.scale * 0.5);
     this.bBox = new Box3().setFromObject(object);
   }
 
@@ -95,7 +100,8 @@ export class FollowEnemy3 {
       this.bulletSpeed,
       25,
       this.damage,
-      EnemyBulletTypes.DESTRUCTIBLE
+      EnemyBulletTypes.DESTRUCTIBLE,
+      this.objectPoolManager
     );
 
     this.fireCooldown = this.fireRate;
@@ -114,10 +120,13 @@ export class FollowEnemy3 {
 
     this.object.position.copy(this.object.body.position);
 
-    const object = this.object.clone();
-    object.scale.set(this.scale * 0.5, this.scale * 0.7, this.scale);
+    this.object.position.y = -0.5;
 
-    this.bBox = new Box3().setFromObject(object);
+    const object = this.object.clone();
+    object.position.y = -1;
+    object.scale.set(this.scale * 0.5, this.scale * 1.4, this.scale * 0.5);
+
+    this.bBox = this.bBox.setFromObject(object);
 
     if (this.takeDamageCooldown > 0) {
       this.object.material.color.setHex(0xeeeeee);
@@ -169,19 +178,18 @@ export class FollowEnemy3 {
       for (let i = 0; i < this.spawns; i++) {
         const position = this.object.position;
 
-        const enemy = new FollowEnemy3(
-          new Vector3(
-            position.x + MathUtils.randFloat(-5, 5),
+        const enemy = new FollowEnemy3({
+          position: new Vector3(position.x + MathUtils.randFloat(-3, 3),
             0,
-            position.z + MathUtils.randFloat(-5, 5)
-          ),
-          this.origLife / 2,
-          this.speed + 1.8,
-          this.scale * 0.65,
-          this.spawns * 2,
-          this.spawnLevel - 1,
-          randomArrayElement([false, true])
-        );
+            position.z + MathUtils.randFloat(-3, 3)),
+          life: this.origLife / 2,
+          speed: this.speed + 1.8,
+          scale: this.scale * 0.65,
+          spawns: this.spawns * 2,
+          spawnLevel: this.spawnLevel - 1,
+          canShoot: randomArrayElement([false, true]),
+          objectPoolManager: this.objectPoolManager
+        });
 
         enemies.push(enemy);
       }

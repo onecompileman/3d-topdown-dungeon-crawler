@@ -28,25 +28,17 @@ import {
 
 export class FollowEnemy4 {
   constructor(options) {
-    const geometry = new SphereBufferGeometry(5.4, 4, 3, 0, 6.3, 0, 6.3);
-    const material = new MeshLambertMaterial({
-      color: 0xeeeeee,
-    });
+    this.objectPoolManager = options.objectPoolManager;
 
-    const lineMaterial = new LineBasicMaterial({
-      color: 0x000000
-    });
-    const line = new Line(geometry, lineMaterial);
-
-    this.line = line;
-    this.object = new Mesh(geometry, material);
+    this.poolItem = this.objectPoolManager.allocate('followEnemy4');
+    this.object = this.poolItem.object;
     this.object.scale.set(0.13, 0.13, 0.13);
     this.object.rotation.x = -Math.PI / 2;
 
     this.scale = 0.13;
 
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
-    this.object.castShadow = true;
+    // this.object.castShadow = true;
 
     this.has2ndObject = true;
 
@@ -58,7 +50,9 @@ export class FollowEnemy4 {
     this.spawnLife = options.spawnLife || false;
     this.lifeToAdd = options.lifeToAdd || 0;
 
-    this.object2 = new Mesh(geometry2, material2);
+    this.poolItem2 = this.objectPoolManager.allocate('followEnemy4Object2');
+
+    this.object2 = this.poolItem2.object;
     this.object2.rotation.z = Math.PI / 4;
 
     this.speed = options.speed || 2;
@@ -115,7 +109,8 @@ export class FollowEnemy4 {
       this.bulletSpeed,
       25,
       this.damage,
-      this.bulletType
+      this.bulletType,
+      this.objectPoolManager
     );
 
     this.fireCooldown = this.fireRate;
@@ -150,8 +145,8 @@ export class FollowEnemy4 {
     const object = this.object.clone();
     object.scale.set(this.scale * 0.7, this.scale, this.scale * 0.7);
 
-    this.bBox = new Box3().setFromObject(object);
-    this.bBox2 = new Box3().setFromObject(this.object2);
+    this.bBox = this.bBox.setFromObject(object);
+    this.bBox2 = this.bBox2.setFromObject(this.object2);
 
     if (this.takeDamageCooldown > 0) {
       this.object2.material.color.setHex(0xeeeeee);

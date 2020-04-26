@@ -1,4 +1,9 @@
-import { PlayerBullet } from '../game-objects/player-bullet';
+import {
+  PlayerBullet
+} from '../game-objects/player-bullet';
+import {
+  WeaponTypes
+} from '../../enums/weapons-types.enum';
 
 export class Pistol {
   constructor() {
@@ -13,13 +18,15 @@ export class Pistol {
     this.name = 'pistol';
   }
 
-  fire(position, velocity) {
+  fire(position, velocity, objectPoolManager) {
     const bullet = new PlayerBullet(
       position.clone(),
       velocity.clone(),
       40,
       30,
-      this.damage
+      this.damage,
+      WeaponTypes.PISTOL,
+      objectPoolManager
     );
 
     this.fireCooldown = this.fireRate;

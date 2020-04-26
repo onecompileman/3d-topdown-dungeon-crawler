@@ -6,28 +6,25 @@ import {
   Box3,
   BoxBufferGeometry,
 } from 'three';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
-import { EnemyBullet } from './enemy-bullet';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
-import { FollowEnemy1 } from './follow-enemy-1';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
+import {
+  FollowEnemy1
+} from './follow-enemy-1';
 
 export class Tower3 {
   constructor(options) {
-    const geometry = new CylinderBufferGeometry(
-      0.7,
-      0.7,
-      3,
-      8,
-      1,
-      false,
-      0,
-      6.3
-    );
-    const material = new MeshLambertMaterial({
-      color: 0x111111,
-    });
+    this.objectPoolManager = options.objectPoolManager;
 
-    this.object = new Mesh(geometry, material);
+    this.poolItem = this.objectPoolManager.allocate('towerBody');
+    this.object = this.poolItem.object;
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
 
     this.life = options.life || 30;
@@ -53,17 +50,17 @@ export class Tower3 {
     const shieldCount = options.shieldCount || 1;
 
     this.shields = [];
+    this.shieldPoolItems = [];
     this.shieldBbox = [];
 
-    for (let i = 0; i < shieldCount; i++) {
-      const geometry1 = new BoxBufferGeometry(0.85, 0.85, 0.15);
-      const material1 = new MeshLambertMaterial({
-        color: 0xeeeeee,
-      });
 
-      const shield1 = new Mesh(geometry1, material1);
+    for (let i = 0; i < shieldCount; i++) {
+      this.objectPoolManager = options.objectPoolManager;
+      const shieldPoolItem = this.objectPoolManager.allocate('towerShield');
+      const shield1 = shieldPoolItem.object;
       const shieldBbox = new Box3().setFromObject(shield1);
       this.shields.push(shield1);
+      this.shieldPoolItems.push(shieldPoolItem);
       this.shieldBbox.push(shieldBbox);
     }
 
@@ -85,7 +82,7 @@ export class Tower3 {
 
     this.object.rotation.y += 0.01;
 
-    this.bBox = new Box3().setFromObject(this.object);
+    this.bBox = this.bBox.setFromObject(this.object);
 
     const initialRotation = this.object.rotation.y;
     const rotationIncrement = (Math.PI * 2) / this.shields.length;
@@ -139,13 +136,14 @@ export class Tower3 {
 
     enemyPosition.y = -1.2;
 
-    const enemy = new FollowEnemy1(
-      enemyPosition,
-      this.enemyLife,
-      this.enemySpeed,
-      this.enemySpawnCanShoot,
-      this.enemyDamage
-    );
+    const enemy = new FollowEnemy1({
+      position: enemyPosition,
+      life: this.enemyLife,
+      speed: this.enemySpeed,
+      canShoot: this.enemySpawnCanShoot,
+      damage: this.enemyDamage,
+      objectPoolManager: this.objectPoolManager
+    });
 
     enemy.object.rotation.z = this.object.rotation.y;
 
@@ -177,7 +175,8 @@ export class Tower3 {
         this.bulletSpeed,
         25,
         this.damage,
-        this.bulletType
+        this.bulletType,
+        this.objectPoolManager
       );
 
       bullets.push(bullet);

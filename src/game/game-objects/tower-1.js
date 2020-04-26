@@ -5,27 +5,22 @@ import {
   Vector3,
   Box3,
 } from 'three';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
-import { EnemyBullet } from './enemy-bullet';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
 
 export class Tower1 {
   constructor(options) {
-    const geometry = new CylinderBufferGeometry(
-      0.7,
-      0.7,
-      3,
-      8,
-      1,
-      false,
-      0,
-      6.3
-    );
-    const material = new MeshLambertMaterial({
-      color: 0x111111,
-    });
+    this.objectPoolManager = options.objectPoolManager;
 
-    this.object = new Mesh(geometry, material);
+    this.poolItem = this.objectPoolManager.allocate('towerBody');
+    this.object = this.poolItem.object;
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
 
     this.life = options.life || 30;
@@ -58,7 +53,7 @@ export class Tower1 {
 
     this.object.rotation.y += 0.01;
 
-    this.bBox = new Box3().setFromObject(this.object);
+    this.bBox = this.bBox.setFromObject(this.object);
 
     if (this.takeDamageCooldown > 0) {
       this.object.material.color.setHex(0xeeeeee);

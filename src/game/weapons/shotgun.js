@@ -1,7 +1,17 @@
-import { PlayerBullet } from '../game-objects/player-bullet';
-import { Vector2, MathUtils, Vector3 } from 'three';
-import { WeaponTypes } from '../../enums/weapons-types.enum';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
+import {
+  PlayerBullet
+} from '../game-objects/player-bullet';
+import {
+  Vector2,
+  MathUtils,
+  Vector3
+} from 'three';
+import {
+  WeaponTypes
+} from '../../enums/weapons-types.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
 
 export class Shotgun {
   constructor() {
@@ -24,7 +34,7 @@ export class Shotgun {
     this.name = 'shotgun';
   }
 
-  fire(position, velocity) {
+  fire(position, velocity, objectPoolManager) {
     let bullets = [];
     const spread = Math.PI / 3;
 
@@ -45,7 +55,7 @@ export class Shotgun {
         40,
         30,
         this.damage,
-        WeaponTypes.SHOTGUN
+        WeaponTypes.SHOTGUN, objectPoolManager
       );
 
       bullets.push(bullet);

@@ -8,10 +8,16 @@ import {
   LineBasicMaterial,
   Line,
 } from 'three';
-import { ParticleTypes } from '../../../enums/particle-types.enum';
+import {
+  ParticleTypes
+} from '../../../enums/particle-types.enum';
+import {
+  randomArrayElement
+} from '../../../utils/random-array-element';
 
 export class Particle {
-  constructor(position, life, color, velocity, size, type) {
+  constructor(position, life, color, velocity, size, type, objectPoolManager) {
+    this.objectPoolManager = objectPoolManager;
     this.createParticle(color, type, size);
 
     this.object.position.copy(position.clone());
@@ -26,77 +32,35 @@ export class Particle {
 
     switch (type) {
       case ParticleTypes.PLAYER_TRAIL:
-        geometry = new BoxBufferGeometry(size, size, size);
-        material = new MeshLambertMaterial({
-          color,
-        });
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('playerTrailParticle');
+        this.object = this.poolItem.object;
 
         return;
       case ParticleTypes.PLAYER_FIRE:
-        geometry = new BoxBufferGeometry(size, size, size);
-        material = new MeshLambertMaterial({
-          color,
-          emissive: 0xe56c38,
-          emissiveIntensity: 1,
-        });
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('playerFire');
+        this.object = this.poolItem.object;
         return;
       case ParticleTypes.ENEMY1_EXPLODE:
-        const rand = MathUtils.randInt(1, 2);
-        if (rand === 1) {
-          geometry = new BoxBufferGeometry(size, size, size);
-          material = new MeshLambertMaterial({
-            color: 0x000000,
-          });
-
-          this.object = new Mesh(geometry, material);
-        } else {
-          geometry = new BoxBufferGeometry(size, size, size);
-          material = new MeshLambertMaterial({
-            color: 0x555555,
-          });
-
-          this.object = new Mesh(geometry, material);
-        }
-
+        this.poolItem = this.objectPoolManager.allocate('enemyExplode');
+        this.object = this.poolItem.object;
+        this.object.material.color.set(randomArrayElement([1, 2]) === 1 ? 0x000000 : 0x555555);
         return;
       case ParticleTypes.HOMING_PLAYER_EXPLODE:
-        geometry = new BoxBufferGeometry(size, size, size);
-        material = new MeshLambertMaterial({
-          color: 0xff0000,
-          emissive: 0xff2222,
-          emissiveIntensity: 1,
-        });
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('homingExplode');
+        this.object = this.poolItem.object;
         return;
       case ParticleTypes.ENEMY_DESTRUCTIBLE:
-        geometry = new BoxBufferGeometry(size, size, size);
-        material = new MeshLambertMaterial({
-          color: 0xff6b00,
-          emissive: 0xf24800,
-          emissiveIntensity: 1,
-        });
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('enemyDestructible');
+        this.object = this.poolItem.object;
         return;
       case ParticleTypes.ENEMY_INDESTRUCTIBLE:
-        geometry = new BoxBufferGeometry(size, size, size);
-        material = new MeshLambertMaterial({
-          color: 0x5b2478,
-          emissive: 0x390256,
-          emissiveIntensity: 1,
-        });
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('enemyInDestructible');
+        this.object = this.poolItem.object;
         return;
 
       case ParticleTypes.LIFE:
-        geometry = new BoxBufferGeometry(size, size, size);
-        material = new MeshLambertMaterial({
-          color: 0xce2121,
-          emissive: 0x910000,
-          emissiveIntensity: 1,
-        });
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('lifeParticle');
+        this.object = this.poolItem.object;
         return;
     }
   }

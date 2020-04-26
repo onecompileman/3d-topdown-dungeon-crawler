@@ -5,23 +5,47 @@ import {
   Mesh,
   MathUtils,
 } from 'three';
-import { EnemyTypes } from '../enums/enemy-types.enum';
-import { FollowEnemy1 } from './game-objects/follow-enemy-1';
-import { FollowEnemy2 } from './game-objects/follow-enemy-2';
-import { FollowEnemy3 } from './game-objects/follow-enemy-3';
-import { FollowEnemy4 } from './game-objects/follow-enemy-4';
-import { Tower1 } from './game-objects/tower-1';
-import { Tower2 } from './game-objects/tower-2';
-import { Tower3 } from './game-objects/tower-3';
-import { Boss } from './game-objects/boss';
-import { Box } from './game-objects/box';
+import {
+  EnemyTypes
+} from '../enums/enemy-types.enum';
+import {
+  FollowEnemy1
+} from './game-objects/follow-enemy-1';
+import {
+  FollowEnemy2
+} from './game-objects/follow-enemy-2';
+import {
+  FollowEnemy3
+} from './game-objects/follow-enemy-3';
+import {
+  FollowEnemy4
+} from './game-objects/follow-enemy-4';
+import {
+  Tower1
+} from './game-objects/tower-1';
+import {
+  Tower2
+} from './game-objects/tower-2';
+import {
+  Tower3
+} from './game-objects/tower-3';
+import {
+  Boss
+} from './game-objects/boss';
+import {
+  Box
+} from './game-objects/box';
 
 export class Room {
   constructor(options) {
     const geometry = new BoxBufferGeometry(50, 0.1, 50);
-    const material = new MeshBasicMaterial({ color: 0x777777 });
+    const material = new MeshBasicMaterial({
+      color: 0x777777
+    });
 
     this.roomIndex = options.roomIndex || '0-0';
+
+    this.objectPoolManager = options.objectPoolManager;
 
     this.object = new Mesh(geometry, material);
     this.object.receiveShadow = true;
@@ -80,14 +104,15 @@ export class Room {
 
       const position = new Vector3(positionX, -0.3, positionZ);
 
-      return new Box(position, boxPos.destructable);
+      return new Box(position, boxPos.destructable, this.objectPoolManager);
     });
   }
 
   generateBoss() {
-    this.bosses = [
+    return [
       new Boss({
         position: this.position.clone(),
+        objectPoolManager: this.objectPoolManager,
         ...this.bossStats,
       }),
     ];
@@ -96,6 +121,7 @@ export class Room {
   generateWaveEnemies() {
     this.roomGeneratedWave = true;
     const enemyWaves = this.enemyWaves[this.currentWave - 1];
+    const enemies = [];
 
     if (enemyWaves) {
       enemyWaves.forEach((enemyType) => {
@@ -109,6 +135,7 @@ export class Room {
 
           options = {
             position,
+            objectPoolManager: this.objectPoolManager,
             ...enemyStats,
             spawnLife: true,
             lifeToAdd: enemyType.lifeToAdd,
@@ -120,15 +147,20 @@ export class Room {
 
           options = {
             position,
+            objectPoolManager: this.objectPoolManager,
+
             ...enemyStats,
           };
         }
 
         const enemy = this.generateWaveEnemy(type, options);
 
-        this.enemies.push(enemy);
+        enemies.push(enemy);
       });
     }
+
+
+    return enemies;
   }
 
   getRandomAvailableLocation() {
@@ -142,6 +174,8 @@ export class Room {
 
     let positionIsNotAvailable = false;
 
+    let positionGenerateCtr = 0;
+
     // Ensures that the enemy position is not too close to the player and to other enemies
     do {
       position = new Vector3(
@@ -150,25 +184,27 @@ export class Room {
         MathUtils.randFloat(minY, maxY)
       );
 
-      positionIsNotAvailable =
-        positionIsNotAvailable ||
-        this.player.object.position.distanceTo(position) <= 3;
+      // console.log(position);
 
-      if (!positionIsNotAvailable) {
-        const collidedWithEnemies = this.enemies.some((enemy) => {
-          return position.distanceTo(enemy.object.position) <= 1.2;
-        });
+      // positionIsNotAvailable =
+      //   positionIsNotAvailable ||
+      //   this.player.object.position.distanceTo(position) <= 2;
 
-        positionIsNotAvailable = positionIsNotAvailable || collidedWithEnemies;
-      }
+      // if (!positionIsNotAvailable) {
+      //   const collidedWithEnemies = this.enemies.some((enemy) => {
+      //     return position.distanceTo(enemy.object.position) <= 1.2;
+      //   });
 
-      if (!positionIsNotAvailable) {
-        const collidedWithBoxes = this.boxes.some((box) => {
-          return position.distanceTo(box.object.position) <= 3;
-        });
+      //   positionIsNotAvailable = positionIsNotAvailable || collidedWithEnemies;
+      // }
 
-        positionIsNotAvailable = positionIsNotAvailable || collidedWithBoxes;
-      }
+      // if (!positionIsNotAvailable) {
+      //   const collidedWithBoxes = this.boxes.some((box) => {
+      //     return position.distanceTo(box.object.position) <= 1.5;
+      //   });
+
+      //   positionIsNotAvailable = positionIsNotAvailable || collidedWithBoxes;
+      // }
     } while (positionIsNotAvailable);
 
     return position;
@@ -376,9 +412,9 @@ export class Room {
     const topLeftBlocker = this.createBlocker(
       new Vector3(
         this.position.x -
-          pathWayLength / 2 -
-          sideBlockerLength / 2 -
-          sideBlockerWidth / 2,
+        pathWayLength / 2 -
+        sideBlockerLength / 2 -
+        sideBlockerWidth / 2,
         this.position.y,
         this.position.z - 25 - sideBlockerWidth / 2
       ),
@@ -392,9 +428,9 @@ export class Room {
     const topRightBlocker = this.createBlocker(
       new Vector3(
         this.position.x +
-          pathWayLength / 2 +
-          sideBlockerLength / 2 +
-          sideBlockerWidth / 2,
+        pathWayLength / 2 +
+        sideBlockerLength / 2 +
+        sideBlockerWidth / 2,
         this.position.y,
         this.position.z - 25 - sideBlockerWidth / 2
       ),
@@ -409,9 +445,9 @@ export class Room {
     const bottomLeftBlocker = this.createBlocker(
       new Vector3(
         this.position.x -
-          pathWayLength / 2 -
-          sideBlockerLength / 2 -
-          sideBlockerWidth / 2,
+        pathWayLength / 2 -
+        sideBlockerLength / 2 -
+        sideBlockerWidth / 2,
         this.position.y,
         this.position.z + 25 + sideBlockerWidth / 2
       ),
@@ -425,9 +461,9 @@ export class Room {
     const bottomRightBlocker = this.createBlocker(
       new Vector3(
         this.position.x +
-          pathWayLength / 2 +
-          sideBlockerLength / 2 +
-          sideBlockerWidth / 2,
+        pathWayLength / 2 +
+        sideBlockerLength / 2 +
+        sideBlockerWidth / 2,
         this.position.y,
         this.position.z + 25 + sideBlockerWidth / 2
       ),
@@ -540,7 +576,9 @@ export class Room {
 
   createBlocker(position, size) {
     const geometry = new BoxBufferGeometry(size.x, size.y, size.z);
-    const material = new MeshBasicMaterial({ color: 0x555555 });
+    const material = new MeshBasicMaterial({
+      color: 0x555555
+    });
 
     const object = new Mesh(geometry, material);
     object.position.copy(position);

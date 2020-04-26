@@ -65,7 +65,9 @@ const componentStyles = `
 export class AreYouSure extends HTMLElement {
   constructor() {
     super();
-    this.root = this.attachShadow({ mode: 'open' });
+    this.root = this.attachShadow({
+      mode: 'open'
+    });
     this.prop = {
       cancelCallback: () => {},
       confirmCallback: () => {},
@@ -96,7 +98,7 @@ export class AreYouSure extends HTMLElement {
     return this.prop.confirmCallback;
   }
 
-  set resumeCallback(confirmCallback) {
+  set confirmCallback(confirmCallback) {
     this.prop.confirmCallback = confirmCallback;
   }
 

@@ -21,28 +21,78 @@ import {
 } from 'three';
 
 import C from 'cannon';
-import { Player } from './game-objects/player';
-import { ParticleSystem } from './game-objects/particle-system/particle-system';
-import { ParticleTypes } from '../enums/particle-types.enum';
-import { SoundManager } from './sound-manager';
-import { FollowEnemy1 } from './game-objects/follow-enemy-1';
-import { ScreenManager } from './screen-manager';
-import { FollowEnemy2 } from './game-objects/follow-enemy-2';
-import { FollowEnemy3 } from './game-objects/follow-enemy-3';
-import { FollowEnemy4 } from './game-objects/follow-enemy-4';
-import { WeaponTypes } from '../enums/weapons-types.enum';
-import { randomArrayElement } from '../utils/random-array-element';
-import { EnemyBulletTypes } from '../enums/enemy-bullet-types.enum';
-import { Tower1 } from './game-objects/tower-1';
-import { Tower2 } from './game-objects/tower-2';
-import { Tower3 } from './game-objects/tower-3';
-import { Boss } from './game-objects/boss';
-import { Floor } from './floor';
-import { LevelManager } from './level-manager';
-import { BossPhases } from '../enums/boss-phases.enum';
-import { Life } from './power-ups/life';
-import { MainMenuFloor } from './main-menu-floor';
-import { GameStateService } from '../services/game-state.service';
+import {
+  Player
+} from './game-objects/player';
+import {
+  ParticleSystem
+} from './game-objects/particle-system/particle-system';
+import {
+  ParticleTypes
+} from '../enums/particle-types.enum';
+import {
+  SoundManager
+} from './sound-manager';
+import {
+  FollowEnemy1
+} from './game-objects/follow-enemy-1';
+import {
+  ScreenManager
+} from './screen-manager';
+import {
+  FollowEnemy2
+} from './game-objects/follow-enemy-2';
+import {
+  FollowEnemy3
+} from './game-objects/follow-enemy-3';
+import {
+  FollowEnemy4
+} from './game-objects/follow-enemy-4';
+import {
+  WeaponTypes
+} from '../enums/weapons-types.enum';
+import {
+  randomArrayElement
+} from '../utils/random-array-element';
+import {
+  EnemyBulletTypes
+} from '../enums/enemy-bullet-types.enum';
+import {
+  Tower1
+} from './game-objects/tower-1';
+import {
+  Tower2
+} from './game-objects/tower-2';
+import {
+  Tower3
+} from './game-objects/tower-3';
+import {
+  Boss
+} from './game-objects/boss';
+import {
+  Floor
+} from './floor';
+import {
+  LevelManager
+} from './level-manager';
+import {
+  BossPhases
+} from '../enums/boss-phases.enum';
+import {
+  Life
+} from './power-ups/life';
+import {
+  MainMenuFloor
+} from './main-menu-floor';
+import {
+  GameStateService
+} from '../services/game-state.service';
+import {
+  disposeGeometry
+} from '../utils/dispose-geometry';
+import {
+  ObjectPoolManager
+} from './object-pool-manager';
 
 export class GameManager {
   constructor() {}
@@ -65,6 +115,7 @@ export class GameManager {
     this.bindEvents();
 
     this.initWorld();
+    this.initObjectPoolManager();
 
     this.initBosses();
 
@@ -102,6 +153,8 @@ export class GameManager {
     floorCleared.quitCallback = () => {
       this.screenManager.hideAllScreens();
       this.screenManager.showScreen('levelSelect');
+
+      levelSelect.floors = this.gameState.saveSlots[this.activeSlotName];
       this.isPlaying = false;
 
       this.initMainMenu();
@@ -116,6 +169,8 @@ export class GameManager {
     };
 
     pauseScreen.quitCallback = () => {
+      this.screenManager.hideAllScreens();
+      this.screenManager.showScreen('areYouSure');
       areYouSure.message = 'You are trying to go back to the level select';
 
       areYouSure.confirmCallback = () => {
@@ -183,7 +238,17 @@ export class GameManager {
 
     levelSelect.levelSelectCallback = (level, floor, activeSlot) => {
       this.play(level - 1, floor - 1, activeSlot);
+      this.activeSlotName = activeSlot;
     };
+  }
+
+  initObjectPoolManager() {
+    this.objectPoolManager = new ObjectPoolManager({
+      scene: this.scene,
+      world: this.world,
+    });
+
+    this.objectPoolManager.initObjectPools();
   }
 
   play(level, floor, activeSlot) {
@@ -206,7 +271,7 @@ export class GameManager {
     this.screenManager.showScreen('inGameMapUI');
 
     this.background = this.soundManager.playAudio(
-      randomArrayElement(['weightOfTheWorld', 'beautifulSong', 'cityRuins']),
+      randomArrayElement(['beautifulSong', 'cityRuins']),
       0.2,
       true
     );
@@ -214,11 +279,7 @@ export class GameManager {
     this.background.onEnded = () => {
       if (this.isPlaying) {
         this.background = this.soundManager.playAudio(
-          randomArrayElement([
-            'weightOfTheWorld',
-            'beautifulSong',
-            'cityRuins',
-          ]),
+          randomArrayElement(['beautifulSong', 'cityRuins']),
           0.2,
           true
         );
@@ -232,6 +293,7 @@ export class GameManager {
       scene: this.scene,
       world: this.world,
       mapUI: this.screenManager.screens.inGameMapUI,
+      objectPoolManager: this.objectPoolManager,
       screenManager: this.screenManager,
       activeLevelIndex: level,
       activeFloorIndex: floor,
@@ -259,12 +321,15 @@ export class GameManager {
     };
 
     this.levelManager.startActiveFloor();
+
+
   }
 
   updateLevelManager() {
     if (this.levelManager) {
       this.levelManager.update();
       this.levelManager.floor.update();
+
     }
   }
 
@@ -273,6 +338,7 @@ export class GameManager {
       player: this.player,
       scene: this.scene,
       world: this.world,
+      objectPoolManager: this.objectPoolManager,
     });
 
     this.mainMenuFloor.initMainMenu();
@@ -282,7 +348,7 @@ export class GameManager {
 
   destroyMainMenu() {
     this.mainMenuBullets.forEach((bullet) => {
-      this.scene.remove(bullet.object);
+      this.objectPoolManager.free(bullet.poolItem);
     });
 
     this.mainMenuBullets = [];
@@ -296,9 +362,9 @@ export class GameManager {
 
       if (boss.canFire()) {
         const bullets = boss.fire();
-        bullets.forEach((b) => {
-          this.scene.add(b.object);
-        });
+        // bullets.forEach((b) => {
+        //   // this.scene.add(b.object);
+        // });
 
         this.mainMenuBullets.push(...bullets);
       }
@@ -308,7 +374,11 @@ export class GameManager {
       b.update(deltaTime);
 
       if (b.isDead()) {
-        this.scene.remove(b.object);
+        // disposeGeometry(b.object.geometry);
+        // b.object.material.dispose();
+        // this.scene.remove(b.object);
+
+        this.objectPoolManager.free(b.poolItem);
 
         return false;
       }
@@ -334,7 +404,11 @@ export class GameManager {
 
   updateBosses() {
     let bossesToAdd = [];
-    if (this.levelManager && this.levelManager.floor) {
+    if (
+      this.levelManager &&
+      this.levelManager.floor &&
+      !this.levelManager.floor.currentRoom.isGeneratingWave
+    ) {
       this.levelManager.floor.currentRoom.bosses = this.levelManager.floor.currentRoom.bosses.filter(
         (enemy) => {
           enemy.update();
@@ -440,9 +514,9 @@ export class GameManager {
 
           if (enemy.canFire()) {
             const bullets = enemy.fire();
-            bullets.forEach((b) => {
-              this.scene.add(b.object);
-            });
+            // bullets.forEach((b) => {
+            //   this.scene.add(b.object);
+            // });
             this.enemyBullets.push(...bullets);
           }
 
@@ -450,7 +524,7 @@ export class GameManager {
             this.soundManager.playAudio('bossExplode');
             const particleSystem = new ParticleSystem(
               this.scene,
-              20,
+              12,
               0.1,
               200,
               80,
@@ -460,7 +534,8 @@ export class GameManager {
               new Vector3(-1, -1, -1),
               new Vector3(1, 1, 1),
               ParticleTypes.ENEMY1_EXPLODE,
-              false
+              false,
+              this.objectPoolManager
             );
 
             particleSystem.start();
@@ -474,17 +549,15 @@ export class GameManager {
             if (enemy.spawnLife) {
               const life = new Life(
                 enemy.object.position.clone(),
-                enemy.lifeToAdd
+                enemy.lifeToAdd,
+                this.objectPoolManager
               );
-
-              this.scene.add(life);
 
               this.levelManager.floor.currentRoom.powerups.push(life);
             }
 
-            this.world.remove(enemy.object.body);
-            this.scene.remove(enemy.object);
-            this.scene.remove(enemy.line);
+            this.objectPoolManager.free(enemy.poolItem);
+            this.objectPoolManager.free(enemy.poolItemLine);
           }
 
           return !enemy.isDead();
@@ -493,8 +566,6 @@ export class GameManager {
     }
 
     bossesToAdd.forEach((e) => {
-      e.object.add(e.line);
-      this.scene.add(e.object);
       this.addMeshToWorld(e.object, 60);
 
       this.levelManager.floor.currentRoom.bosses.push(e);
@@ -520,11 +591,13 @@ export class GameManager {
 
             this.soundManager.playAudio('life');
 
-            this.scene.remove(powerup.object);
+            // powerup.object.geometry.dispose();
+            // powerup.object.material.dispose();
+            this.objectPoolManager.free(powerup.poolItem);
 
             const particleSystem = new ParticleSystem(
               this.scene,
-              14,
+              12,
               0.1,
               200,
               80,
@@ -534,7 +607,8 @@ export class GameManager {
               new Vector3(-1, -1, -1),
               new Vector3(1, 1, 1),
               ParticleTypes.LIFE,
-              false
+              false,
+              this.objectPoolManager
             );
 
             particleSystem.start();
@@ -563,12 +637,9 @@ export class GameManager {
           box.update();
 
           if (box.isDead()) {
-            this.scene.remove(box.object);
-            this.world.remove(box.object.body);
-
             const particleSystem = new ParticleSystem(
               this.scene,
-              14,
+              12,
               0.1,
               200,
               70,
@@ -578,12 +649,17 @@ export class GameManager {
               new Vector3(-1, -1, -1),
               new Vector3(1, 1, 1),
               ParticleTypes.ENEMY1_EXPLODE,
-              false
+              false,
+              this.objectPoolManager
             );
+
+            this.soundManager.playAudio('enemyExplode');
 
             particleSystem.start();
 
             this.particleSystems.push(particleSystem);
+
+            this.objectPoolManager.free(box.poolItem);
 
             return false;
           }
@@ -601,6 +677,7 @@ export class GameManager {
     if (
       this.levelManager &&
       this.levelManager.floor.currentRoom &&
+      !this.levelManager.floor.currentRoom.isGeneratingWave &&
       this.levelManager.floor.currentRoom.enemies
     ) {
       this.levelManager.floor.currentRoom.enemies = this.levelManager.floor.currentRoom.enemies.filter(
@@ -626,18 +703,13 @@ export class GameManager {
             if (enemy.canSpawnEnemy()) {
               const e = enemy.spawnEnemy();
               this.addMeshToWorld(e.object, 30);
-              this.scene.add(e.line);
-              e.object.add(e.line);
-              this.scene.add(e.object);
+
               enemiesToAdd.push(e);
             }
           }
 
           if (enemy.canFire()) {
             const bullets = enemy.fire();
-            bullets.forEach((b) => {
-              this.scene.add(b.object);
-            });
             this.enemyBullets.push(...bullets);
           }
 
@@ -645,7 +717,7 @@ export class GameManager {
             this.soundManager.playAudio('enemyExplode');
             const particleSystem = new ParticleSystem(
               this.scene,
-              14,
+              10,
               0.1,
               200,
               70,
@@ -655,7 +727,8 @@ export class GameManager {
               new Vector3(-1, -1, -1),
               new Vector3(1, 1, 1),
               ParticleTypes.ENEMY1_EXPLODE,
-              false
+              false,
+              this.objectPoolManager
             );
 
             particleSystem.start();
@@ -669,25 +742,23 @@ export class GameManager {
             if (enemy.spawnLife) {
               const life = new Life(
                 enemy.object.position.clone(),
-                enemy.lifeToAdd
+                enemy.lifeToAdd,
+                this.objectPoolManager
               );
-
-              this.scene.add(life.object);
 
               this.levelManager.floor.currentRoom.powerups.push(life);
             }
 
-            this.world.remove(enemy.object.body);
-            this.scene.remove(enemy.object);
+            this.objectPoolManager.free(enemy.poolItem);
 
             if (enemy.shields) {
-              enemy.shields.forEach((s) => {
-                this.scene.remove(s);
+              enemy.shieldPoolItems.forEach((s) => {
+                this.objectPoolManager.free(s);
               });
             }
 
             if (enemy.has2ndObject) {
-              this.scene.remove(enemy.object2);
+              this.objectPoolManager.free(enemy.poolItem2);
             }
           }
 
@@ -697,9 +768,7 @@ export class GameManager {
     }
 
     enemiesToAdd.forEach((e) => {
-      e.object.add(e.line);
-      this.scene.add(e.object);
-      this.addMeshToWorld(e.object, 60);
+      this.addMeshToWorld(e.object, 130);
 
       this.levelManager.floor.currentRoom.enemies.push(e);
     });
@@ -719,7 +788,7 @@ export class GameManager {
 
   initWorld() {
     this.world = new C.World();
-    this.world.gravity.set(0, -100, 0);
+    this.world.gravity.set(0, -120, 0);
   }
 
   updateWorld() {
@@ -742,7 +811,10 @@ export class GameManager {
   }
 
   initPlayer() {
-    this.player = new Player(this.screenManager.screens.inGameUIBottom);
+    this.player = new Player(
+      this.screenManager.screens.inGameUIBottom,
+      this.objectPoolManager
+    );
 
     this.scene.add(this.player.object);
     this.scene.add(this.player.line);
@@ -767,7 +839,8 @@ export class GameManager {
       new Vector3(0, -0.01, 0),
       new Vector3(1, 0.01, 1),
       ParticleTypes.PLAYER_TRAIL,
-      true
+      true,
+      this.objectPoolManager
     );
 
     this.playerParticleTrail.start();
@@ -783,9 +856,6 @@ export class GameManager {
     this.player.onFire = (bullets) => {
       this.levelManager.floor.bulletsFired += bullets.length;
       this.playerBullets.push(...bullets);
-      bullets.forEach((bullet) => {
-        this.scene.add(bullet.object);
-      });
 
       const particleSystem = new ParticleSystem(
         this.scene,
@@ -799,7 +869,8 @@ export class GameManager {
         new Vector3(-1, -1, -1),
         new Vector3(1 + bullets[0].velocity.x, 1, 1 + bullets[0].velocity.z),
         ParticleTypes.PLAYER_FIRE,
-        false
+        false,
+        this.objectPoolManager
       );
 
       particleSystem.start();
@@ -817,7 +888,9 @@ export class GameManager {
 
   initPlatform() {
     const geometry = new BoxBufferGeometry(50, 0.1, 50);
-    const material = new MeshBasicMaterial({ color: 0x777777 });
+    const material = new MeshBasicMaterial({
+      color: 0x777777,
+    });
 
     this.platform = new Mesh(geometry, material);
     this.platform.receiveShadow = true;
@@ -876,22 +949,30 @@ export class GameManager {
       b.update(deltaTime);
 
       this.levelManager.floor.currentRoom.boxes.forEach((box) => {
-        b.isCollided = b.isCollided || box.bBox.intersectsBox(b.bBox);
+        if (!b.isCollided)
+          b.isCollided = b.isCollided || box.bBox.intersectsBox(b.bBox);
       });
 
-      this.levelManager.floor.currentRoom.sideBlockers.forEach((sB) => {
-        const bBox = new Box3().setFromObject(sB);
+      if (!b.isCollided) {
+        this.levelManager.floor.currentRoom.sideBlockers.forEach((sB) => {
+          if (!b.isCollided) {
+            const bBox = new Box3().setFromObject(sB);
 
-        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
-      });
+            b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+          }
+        });
+      }
 
-      this.levelManager.floor.currentRoom.pathWayBlockers.forEach((sB) => {
-        const bBox = new Box3().setFromObject(sB);
+      if (!b.isCollided) {
+        this.levelManager.floor.currentRoom.pathWayBlockers.forEach((sB) => {
+          if (!b.isCollided) {
+            const bBox = new Box3().setFromObject(sB);
 
-        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
-      });
-
-      if (b.type === EnemyBulletTypes.DESTRUCTIBLE) {
+            b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+          }
+        });
+      }
+      if (!b.isCollided && b.type === EnemyBulletTypes.DESTRUCTIBLE) {
         this.playerBullets.forEach((pB) => {
           if (
             !b.isCollided &&
@@ -920,7 +1001,7 @@ export class GameManager {
       if (b.isCollided) {
         const particleSystem = new ParticleSystem(
           this.scene,
-          9,
+          8,
           0.1,
           200,
           60,
@@ -929,10 +1010,11 @@ export class GameManager {
           0.3,
           new Vector3(-1 - b.velocity.x, -1, -1 - b.velocity.z),
           new Vector3(1, 1, 1),
-          b.type === EnemyBulletTypes.DESTRUCTIBLE
-            ? ParticleTypes.ENEMY_DESTRUCTIBLE
-            : ParticleTypes.ENEMY_INDESTRUCTIBLE,
-          false
+          b.type === EnemyBulletTypes.DESTRUCTIBLE ?
+          ParticleTypes.ENEMY_DESTRUCTIBLE :
+          ParticleTypes.ENEMY_INDESTRUCTIBLE,
+          false,
+          this.objectPoolManager
         );
 
         particleSystem.start();
@@ -941,7 +1023,10 @@ export class GameManager {
       }
 
       if (b.isDead()) {
-        this.scene.remove(b.object);
+        // disposeGeometry(b.object.geometry);
+        // b.object.material.dispose();
+        // this.scene.remove(b.object);
+        this.objectPoolManager.free(b.poolItem);
       }
 
       return !b.isDead();
@@ -953,54 +1038,65 @@ export class GameManager {
       let enemyCollided = null;
 
       this.levelManager.floor.currentRoom.boxes.forEach((box) => {
-        if (box.bBox.intersectsBox(b.bBox)) {
-          b.isCollided = true;
+        if (!b.isCollided) {
+          if (box.bBox.intersectsBox(b.bBox)) {
+            b.isCollided = true;
 
-          if (box.destructable) {
-            box.life--;
-            box.takeDamage = box.takeDamageRate;
+            if (box.destructable) {
+              box.life--;
+              box.takeDamage = box.takeDamageRate;
 
-            // console.log('here');
+              // console.log('here');
+            }
           }
         }
       });
 
       if (this.levelManager.floor.gem) {
         if (this.levelManager.floor.gemBbox.intersectsBox(b.bBox)) {
-          this.levelManager.floor.gemLife--;
-          this.levelManager.floor.bulletsHit++;
-          b.isCollided = true;
+          if (!b.isCollided) {
+            this.levelManager.floor.gemLife--;
+            this.levelManager.floor.bulletsHit++;
+            b.isCollided = true;
+          }
         }
       }
 
-      this.levelManager.floor.currentRoom.sideBlockers.forEach((sB) => {
-        const bBox = new Box3().setFromObject(sB);
+      if (!b.isCollided) {
+        this.levelManager.floor.currentRoom.sideBlockers.forEach((sB) => {
+          if (!b.isCollided) {
+            const bBox = new Box3().setFromObject(sB);
 
-        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
-      });
+            b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+          }
+        });
+      }
 
-      this.levelManager.floor.currentRoom.pathWayBlockers.forEach((sB) => {
-        const bBox = new Box3().setFromObject(sB);
+      if (!b.isCollided) {
+        this.levelManager.floor.currentRoom.pathWayBlockers.forEach((sB) => {
+          if (!b.isCollided) {
+            const bBox = new Box3().setFromObject(sB);
 
-        b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
-      });
-
+            b.isCollided = b.isCollided || bBox.intersectsBox(b.bBox);
+          }
+        });
+      }
       if (b.object.position.y <= -1.5) {
         b.isCollided = true;
       }
 
-      if (b.type === WeaponTypes.HOMING) {
+      if (!b.isCollided && b.type === WeaponTypes.HOMING) {
         if (!this.levelManager.floor.currentRoom.enemies.length) {
           b.follow = null;
         } else {
           if (!b.follow) {
             const isBoss =
-              this.levelManager.floor.currentRoom.enemies.length === 0
-                ? true
-                : MathUtils.randInt(0, 1);
-            const enemyToFollow = isBoss
-              ? randomArrayElement(this.bosses)
-              : randomArrayElement(this.levelManager.floor.currentRoom.enemies);
+              this.levelManager.floor.currentRoom.enemies.length === 0 ?
+              true :
+              MathUtils.randInt(0, 1);
+            const enemyToFollow = isBoss ?
+              randomArrayElement(this.bosses) :
+              randomArrayElement(this.levelManager.floor.currentRoom.enemies);
             if (enemyToFollow) {
               if (enemyToFollow.has2ndObject) {
                 b.follow = enemyToFollow.object2.position.clone();
@@ -1012,47 +1108,52 @@ export class GameManager {
         }
       }
 
-      this.levelManager.floor.currentRoom.bosses.forEach((boss) => {
-        if (!b.isCollided) {
-          if (boss.shieldEnabled && boss.shieldBbox.intersectsBox(b.bBox)) {
-            b.isCollided = true;
-          } else if (!boss.shieldEnabled && boss.bBox.intersectsBox(b.bBox)) {
-            boss.takeDamage(b.damage);
-            this.levelManager.floor.bulletsHit++;
-            b.isCollided = true;
-          }
-        }
-      });
-
-      // Check enemy collision
-      this.levelManager.floor.currentRoom.enemies.forEach((e) => {
-        if (e.shields) {
-          e.shieldBbox.forEach((sB) => {
-            if (sB.intersectsBox(b.bBox)) {
+      if (!b.isCollided) {
+        this.levelManager.floor.currentRoom.bosses.forEach((boss) => {
+          if (!b.isCollided) {
+            if (boss.shieldEnabled && boss.shieldBbox.intersectsBox(b.bBox)) {
+              b.isCollided = true;
+            } else if (!boss.shieldEnabled && boss.bBox.intersectsBox(b.bBox)) {
+              boss.takeDamage(b.damage);
+              this.levelManager.floor.bulletsHit++;
               b.isCollided = true;
             }
-          });
-        }
-
-        if (!b.isCollided && b.bBox.intersectsBox(e.bBox)) {
-          b.isCollided = true;
-          enemyCollided = e;
-          if (!e.has2ndObject) {
-            e.takeDamage(b.damage);
-            this.levelManager.floor.bulletsHit++;
           }
-        }
-        if (e.has2ndObject) {
-          if (!b.isCollided && b.bBox.intersectsBox(e.bBox2)) {
-            b.isCollided = true;
-            e.takeDamage(b.damage);
-            this.levelManager.floor.bulletsHit++;
+        });
+      }
 
-            enemyCollided = e;
+      if (!b.isCollided) {
+        // Check enemy collision
+        this.levelManager.floor.currentRoom.enemies.forEach((e) => {
+          if (!b.isCollided) {
+            if (e.shields) {
+              e.shieldBbox.forEach((sB) => {
+                if (sB.intersectsBox(b.bBox)) {
+                  b.isCollided = true;
+                }
+              });
+            }
+
+            if (!b.isCollided && b.bBox.intersectsBox(e.bBox)) {
+              b.isCollided = true;
+              enemyCollided = e;
+              if (!e.has2ndObject) {
+                e.takeDamage(b.damage);
+                this.levelManager.floor.bulletsHit++;
+              }
+            }
+            if (e.has2ndObject) {
+              if (!b.isCollided && b.bBox.intersectsBox(e.bBox2)) {
+                b.isCollided = true;
+                e.takeDamage(b.damage);
+                this.levelManager.floor.bulletsHit++;
+
+                enemyCollided = e;
+              }
+            }
           }
-        }
-      });
-
+        });
+      }
       if (b.isCollided) {
         if (b.type === WeaponTypes.HOMING) {
           const particleSystem = new ParticleSystem(
@@ -1067,7 +1168,8 @@ export class GameManager {
             new Vector3(-1, -1, -1),
             new Vector3(1, 1, 1),
             ParticleTypes.HOMING_PLAYER_EXPLODE,
-            false
+            false,
+            this.objectPoolManager
           );
 
           particleSystem.start();
@@ -1088,7 +1190,8 @@ export class GameManager {
             new Vector3(-1 - b.velocity.x, -1, -b.velocity.z),
             new Vector3(1, 1, 1),
             ParticleTypes.PLAYER_TRAIL,
-            false
+            false,
+            this.objectPoolManager
           );
 
           particleSystem.start();
@@ -1098,7 +1201,7 @@ export class GameManager {
       }
 
       if (b.isDead()) {
-        this.scene.remove(b.object);
+        this.objectPoolManager.free(b.poolItem);
       }
       return !b.isDead();
     });
@@ -1107,7 +1210,7 @@ export class GameManager {
   initLightning() {
     this.ambientLight = new AmbientLight(0xffffff, 0.5);
     this.directionalLight = new DirectionalLight(0xffffff, 0.7);
-    this.directionalLight.castShadow = true;
+    // this.directionalLight.castShadow = true;
     // this.directionalLight.position.set(10, 7, 0);
 
     this.scene.add(this.ambientLight).add(this.directionalLight);

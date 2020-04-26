@@ -36,7 +36,7 @@ export const Levels = [{
         attackRate: 20,
         life: 25,
         spawnLevel: 3,
-        scale: 1.3,
+        scale: 0.9,
         spawns: 2,
       },
     },
@@ -106,6 +106,9 @@ export const Levels = [{
           },
           {
             waves: 2,
+            boxPositions: [
+              ...randomArrayElement(BoxPositions)
+            ],
             enemyWaves: [
               [
                 ...Array(3).fill(EnemyTypes.SHOOT_ENEMY_1),
@@ -140,7 +143,7 @@ export const Levels = [{
         floor: 3,
         weaponUnlocked: 1,
         rooms: [{
-            waves: 3,
+            waves: 2,
             enemyWaves: [
               [
                 ...Array(2).fill(EnemyTypes.SHOOT_ENEMY_1),
@@ -150,14 +153,13 @@ export const Levels = [{
                 ...Array(2).fill(EnemyTypes.SHOOT_ENEMY_1),
                 ...Array(4).fill(EnemyTypes.FOLLOW_ENEMY_1),
               ],
-              [
-                ...Array(4).fill(EnemyTypes.SHOOT_ENEMY_1),
-                ...Array(3).fill(EnemyTypes.FOLLOW_ENEMY_1),
-              ],
             ],
           },
           {
             waves: 2,
+            boxPositions: [
+              ...randomArrayElement(BoxPositions)
+            ],
             enemyWaves: [
               [
                 ...Array(3).fill(EnemyTypes.SHOOT_ENEMY_1),
@@ -188,6 +190,9 @@ export const Levels = [{
           },
           {
             waves: 3,
+            boxPositions: [
+              ...randomArrayElement(BoxPositions)
+            ],
             enemyWaves: [
               [
                 ...Array(5).fill(EnemyTypes.SHOOT_ENEMY_1),
@@ -218,6 +223,9 @@ export const Levels = [{
           },
           {
             waves: 3,
+            boxPositions: [
+              ...randomArrayElement(BoxPositions)
+            ],
             enemyWaves: [
               [
                 ...Array(3).fill(EnemyTypes.SHOOT_ENEMY_1),
@@ -251,9 +259,9 @@ export const Levels = [{
             ],
           },
           {
-            waves: 3,
+            waves: 2,
             boxPositions: [
-              ...randomArrayElement(boxPositions)
+              ...randomArrayElement(BoxPositions)
             ],
             enemyWaves: [
               [
@@ -473,7 +481,7 @@ export const Levels = [{
         attackRate: 20,
         life: 35,
         spawnLevel: 3,
-        scale: 1.3,
+        scale: 0.9,
         spawns: 2,
       },
       [EnemyTypes.FOLLOW_ENEMY_4]: {
@@ -1027,7 +1035,7 @@ export const Levels = [{
         attackRate: 20,
         life: 45,
         spawnLevel: 3,
-        scale: 1.3,
+        scale: 0.9,
         spawns: 2,
       },
       [EnemyTypes.FOLLOW_ENEMY_4]: {
@@ -1632,7 +1640,7 @@ export const Levels = [{
         attackRate: 20,
         life: 45,
         spawnLevel: 3,
-        scale: 1.3,
+        scale: 0.9,
         spawns: 2,
       },
       [EnemyTypes.FOLLOW_ENEMY_4]: {
@@ -2346,7 +2354,7 @@ export const Levels = [{
         attackRate: 20,
         life: 65,
         spawnLevel: 3,
-        scale: 1.3,
+        scale: 0.9,
         spawns: 2,
       },
       [EnemyTypes.FOLLOW_ENEMY_4]: {
@@ -3001,7 +3009,11 @@ export const Levels = [{
             enemyWaves: [
               [...Array(10).fill(EnemyTypes.FOLLOW_ENEMY_1)],
               [...Array(10).fill(EnemyTypes.FOLLOW_ENEMY_1),
-              ...Array(2).fill({ type: EnemyTypes.TOWER_2, lifeToAdd: 30})]
+                ...Array(2).fill({
+                  type: EnemyTypes.TOWER_2,
+                  lifeToAdd: 30
+                })
+              ]
             ]
           },
           {

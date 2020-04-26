@@ -13,27 +13,27 @@ import {
 } from 'three';
 
 import * as C from 'cannon';
-import { EnemyBullet } from './enemy-bullet';
-import { EnemyBulletTypes } from '../../enums/enemy-bullet-types.enum';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
+import {
+  EnemyBullet
+} from './enemy-bullet';
+import {
+  EnemyBulletTypes
+} from '../../enums/enemy-bullet-types.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
 
 export class FollowEnemy2 {
   constructor(options) {
-    const geometry = new TorusBufferGeometry(5, 5.9, 4, 8, 6.3);
-    const material = new MeshLambertMaterial({
-      color: 0x555555,
-    });
+    this.objectPoolManager = options.objectPoolManager;
 
-    const lineMaterial = new LineBasicMaterial({ color: 0x555555 });
-    const line = new Line(geometry, lineMaterial);
-
-    this.line = line;
-    this.object = new Mesh(geometry, material);
+    this.poolItem = this.objectPoolManager.allocate('followEnemy2');
+    this.object = this.poolItem.object;
     this.object.scale.set(0.13, 0.13, 0.13);
     this.object.rotation.x = -Math.PI / 2;
 
     this.object.position.copy(options.position || new Vector3(0, 0, 0));
-    this.object.castShadow = true;
+    // this.object.castShadow = true;
 
     this.speed = options.speed || 3;
 
@@ -97,7 +97,8 @@ export class FollowEnemy2 {
         this.bulletSpeed,
         20,
         this.damage,
-        EnemyBulletTypes.RANDOM
+        EnemyBulletTypes.RANDOM,
+        this.objectPoolManager
       );
 
       bullets.push(bullet);
@@ -117,7 +118,7 @@ export class FollowEnemy2 {
     this.object.body.velocity.copy(new C.Vec3(vel.x, 0, vel.z));
 
     this.object.position.copy(this.object.body.position);
-    this.bBox = new Box3().setFromObject(this.object);
+    this.bBox = this.bBox.setFromObject(this.object);
 
     if (this.takeDamageCooldown > 0) {
       this.object.material.color.setHex(0xeeeeee);

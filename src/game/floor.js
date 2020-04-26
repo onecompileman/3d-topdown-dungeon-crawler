@@ -1,5 +1,9 @@
-import { randomArrayElement } from '../utils/random-array-element';
-import { Room } from './room';
+import {
+  randomArrayElement
+} from '../utils/random-array-element';
+import {
+  Room
+} from './room';
 import {
   Vector3,
   Object3D,
@@ -12,6 +16,9 @@ import {
   Line,
 } from 'three';
 import * as C from 'cannon';
+import {
+  disposeGeometry
+} from '../utils/dispose-geometry';
 
 export class Floor {
   constructor(options) {
@@ -19,6 +26,7 @@ export class Floor {
     this.scene = options.scene;
     this.world = options.world;
     this.mapUI = options.mapUI;
+    this.objectPoolManager = options.objectPoolManager;
 
     this.floorData = options.floorData;
     this.enemyStats = options.enemyStats;
@@ -41,7 +49,9 @@ export class Floor {
     this.rooms = [];
 
     this.roomGrid = [
-      [[], 0, 0],
+      [
+        [], 0, 0
+      ],
       [0, 0, 0],
       [0, 0, 0],
     ];
@@ -107,63 +117,64 @@ export class Floor {
     this.roomGrid.forEach((r, rI) => {
       r.forEach((c, cI) => {
         if (c !== 0) {
-        const position = new Vector3(cI * 70, -2, rI * 70);
-        const roomIndex = rI + '-' + cI;
-        const pathWays = c;
+          const position = new Vector3(cI * 70, -2, rI * 70);
+          const roomIndex = rI + '-' + cI;
+          const pathWays = c;
 
-        const index = roomIndexes.indexOf(`${rI}-${cI}`);
+          const index = roomIndexes.indexOf(`${rI}-${cI}`);
 
-        const room = new Room({
-          ...this.floorData.rooms[index],
-          position,
-          roomIndex,
-          pathWays,
-          enemyStats: this.enemyStats,
-          player: this.player,
-          isLastRoom: index === this.roomCount - 1,
-        });
+          const room = new Room({
+            ...this.floorData.rooms[index],
+            position,
+            roomIndex,
+            pathWays,
+            objectPoolManager: this.objectPoolManager,
+            enemyStats: this.enemyStats,
+            player: this.player,
+            isLastRoom: index === this.roomCount - 1,
+          });
 
-        this.scene.add(room.object);
-        this.addMeshToWorld(room.object);
+          this.scene.add(room.object);
+          this.addMeshToWorld(room.object);
 
-        this.roomAllPlatforms.add(room.object.clone());
+          this.roomAllPlatforms.add(room.object.clone());
 
-        room.pathWayBlockers.forEach((pW) => {
-          this.scene.add(pW);
-          this.addMeshToWorld(pW);
+          room.pathWayBlockers.forEach((pW) => {
+            this.scene.add(pW);
+            this.addMeshToWorld(pW);
 
-          this.roomAllPlatforms.add(pW.clone());
-        });
+            this.roomAllPlatforms.add(pW.clone());
+          });
 
-        room.boxes.forEach((box) => {
-          this.scene.add(box.object);
-          this.addMeshToWorld(box.object);
+          room.boxes.forEach((box) => {
+            // this.scene.add(box.object);
+            this.addMeshToWorld(box.object);
+            this.roomAllPlatforms.add(box.object.clone());
+          });
 
-          this.roomAllPlatforms.add(box.object.clone());
-        });
+          room.sideBlockers.forEach((sb) => {
+            this.scene.add(sb);
+            this.addMeshToWorld(sb);
 
-        room.sideBlockers.forEach((sb) => {
-          this.scene.add(sb);
-          this.addMeshToWorld(sb);
+            this.roomAllPlatforms.add(sb.clone());
+          });
 
-          this.roomAllPlatforms.add(sb.clone());
-        });
+          room.paths.forEach((p) => {
+            this.scene.add(p);
+            this.addMeshToWorld(p);
 
-        room.paths.forEach((p) => {
-          this.scene.add(p);
-          this.addMeshToWorld(p);
+            this.roomAllPlatforms.add(p.clone());
+          });
 
-          this.roomAllPlatforms.add(p.clone());
-        });
-
-        this.rooms.push(room);
+          this.rooms.push(room);
         }
       });
     });
 
     this.currentRoom = this.rooms[0];
+    this.currentRoom.roomIsEntered = true;
     this.mapUI.updateMap(this.roomGrid);
-    this.mapUI.updatePlayerLocation(r, c);
+    this.mapUI.updatePlayerLocation(0, 0);
   }
 
   removeItemArray(arr, item) {
@@ -177,29 +188,50 @@ export class Floor {
 
   destroyFloor() {
     this.rooms.forEach((room) => {
+      room.enemies.forEach((enemy) => {
+        this.objectPoolManager.free(enemy.poolItem);
+
+        if (enemy.shields) {
+          enemy.shieldPoolItems.forEach((s) => {
+            this.objectPoolManager.free(s);
+          });
+        }
+
+        if (enemy.has2ndObject) {
+          this.objectPoolManager.free(enemy.poolItem2);
+        }
+      });
+
       this.world.remove(room.object.body);
+      disposeGeometry(room.object.geometry);
+      room.object.material.dispose();
       this.scene.remove(room.object);
 
       room.powerups.forEach((powerup) => {
-        this.scene.remove(powerup.object);
+        this.objectPoolManager.free(powerup.poolItem);
       });
 
       room.boxes.forEach((box) => {
-        this.scene.remove(box.object);
-        this.world.remove(box.object.body);
+        this.objectPoolManager.free(box.poolItem);
       });
 
       room.pathWayBlockers.forEach((pW) => {
+        // disposeGeometry(pW.geometry);
+        // pW.material.dispose();
         this.world.remove(pW.body);
         this.scene.remove(pW);
       });
 
       room.sideBlockers.forEach((pW) => {
+        disposeGeometry(pW.geometry);
+        pW.material.dispose();
         this.world.remove(pW.body);
         this.scene.remove(pW);
       });
 
       room.paths.forEach((pW) => {
+        disposeGeometry(pW.geometry);
+        pW.material.dispose();
         this.world.remove(pW.body);
         this.scene.remove(pW);
       });
@@ -209,7 +241,7 @@ export class Floor {
   update() {
     this.rooms.forEach((room) => {
       if (
-        this.currentRoom !== room.roomIndex &&
+        this.currentRoom.roomIndex !== room.roomIndex &&
         room.checkEntered(this.player.object.position.clone())
       ) {
         this.currentRoom = room;
@@ -217,16 +249,45 @@ export class Floor {
         const [r, c] = room.roomIndex.split('-');
 
         this.mapUI.updatePlayerLocation(r, c);
+
+        this.rooms.forEach((r1) => {
+          r1.pathWayBlockers.forEach((pW) => {
+            this.world.remove(pW.body);
+          });
+
+          r1.sideBlockers.forEach((pW) => {
+            this.world.remove(pW.body);
+          });
+
+          r1.boxes.forEach((box) => {
+            if (box.object.body) {
+              this.world.remove(box.object.body);
+            }
+          });
+        });
+
+        this.currentRoom.boxes.forEach((box) => {
+          this.addMeshToWorld(box.object);
+        });
+        this.currentRoom.pathWayBlockers.forEach((pW) => {
+          this.addMeshToWorld(pW);
+        });
+
+        this.currentRoom.sideBlockers.forEach((pW) => {
+          this.addMeshToWorld(pW);
+        });
       }
 
-      const pathWays = room.roomOpened
-        ? room.pathWaysToOpen()
-        : room.pathWaysToClose();
+      const pathWays = room.roomOpened ?
+        room.pathWaysToOpen() :
+        room.pathWaysToClose();
 
       pathWays.forEach((pW) => {
-        this.scene.remove(pW);
-
+        // disposeGeometry(pW.geometry);
+        pW.material.dispose();
         this.world.remove(pW.body);
+
+        this.scene.remove(pW);
       });
     });
 
@@ -243,8 +304,11 @@ export class Floor {
       const pathWaysToRemove = this.currentRoom.pathWaysToOpen();
 
       pathWaysToRemove.forEach((pathWay) => {
-        this.scene.remove(pathWay);
+        // disposeGeometry(pathWay.geometry);
+        // pathWay.material.dispose();
         this.world.remove(pathWay.body);
+
+        this.scene.remove(pathWay);
       });
     }
 
@@ -252,11 +316,13 @@ export class Floor {
       this.currentRoom &&
       !this.currentRoom.roomCleared &&
       this.currentRoom.roomIsEntered &&
+      !this.currentRoom.isGeneratingWave &&
       !this.currentRoom.isStarted
     ) {
+      this.currentRoom.isGeneratingWave = true;
+
       this.currentRoom.isStarted = true;
       this.currentRoom.roomOpened = false;
-
       const pathWaysToAdd = this.currentRoom.pathWaysToClose();
 
       pathWaysToAdd.forEach((pathWay) => {
@@ -264,28 +330,23 @@ export class Floor {
         this.world.add(pathWay.body);
       });
 
-      this.currentRoom.generateWaveEnemies();
-
-      this.currentRoom.enemies.forEach((enemy) => {
-        if (enemy.has2ndObject) {
-          this.scene.add(enemy.object2);
-        }
-
-        enemy.object.add(enemy.line);
-        this.scene.add(enemy.object);
-
-        this.addMeshToWorld(enemy.object, 20);
+      const enemies = this.currentRoom.generateWaveEnemies();
+      enemies.forEach((enemy) => {
+        this.addMeshToWorld(enemy.object, 130);
+        this.currentRoom.enemies.push(enemy);
       });
+
       if (this.currentRoom.isBossRoom) {
-        this.currentRoom.generateBoss();
+        const bosses = this.currentRoom.generateBoss();
 
-        this.currentRoom.bosses.forEach((boss) => {
-          boss.object.add(boss.line);
-          this.scene.add(boss.object);
+        bosses.forEach((boss) => {
+          this.addMeshToWorld(boss.object, 130);
 
-          this.addMeshToWorld(boss.object, 80);
+          this.currentRoom.bosses.push(boss);
         });
       }
+
+      this.currentRoom.isGeneratingWave = false;
     }
 
     if (
@@ -303,21 +364,21 @@ export class Floor {
 
           if (boss.shieldEnabled) {
             boss.shieldEnabled = false;
-          } else if (this.currentRoom.bosses[0].changePhase()) {
+          } else if (
+            this.currentRoom.bosses[0].changePhase() &&
+            !this.currentRoom.isGeneratingWave
+          ) {
             boss.shieldEnabled = true;
+            this.currentRoom.isGeneratingWave = true;
             this.currentRoom.currentWave++;
-            this.currentRoom.generateWaveEnemies();
+            const enemies = this.currentRoom.generateWaveEnemies();
 
-            this.currentRoom.enemies.forEach((enemy) => {
-              if (enemy.has2ndObject) {
-                this.scene.add(enemy.object2);
-              }
-
-              enemy.object.add(enemy.line);
-              this.scene.add(enemy.object);
-
-              this.addMeshToWorld(enemy.object, 20);
+            enemies.forEach((enemy) => {
+              this.addMeshToWorld(enemy.object, 130);
+              this.currentRoom.enemies.push(enemy);
             });
+
+            this.currentRoom.isGeneratingWave = false;
           }
         }
 
@@ -355,29 +416,21 @@ export class Floor {
           this.currentRoom.roomCleared = true;
         }
       } else {
-        if (this.currentRoom.currentWave < this.currentRoom.waves && !this.currentRoom.isGeneratingWave) {
+        if (
+          this.currentRoom.currentWave < this.currentRoom.waves &&
+          !this.currentRoom.isGeneratingWave
+        ) {
           this.currentRoom.isGeneratingWave = true;
           this.currentRoom.currentWave++;
-          console.log('here1');
-          this.currentRoom.generateWaveEnemies();
 
-          this.currentRoom.enemies.forEach((enemy) => {
-            if (enemy.has2ndObject) {
-              this.scene.add(enemy.object2);
-            }
+          const enemies = this.currentRoom.generateWaveEnemies();
 
-            enemy.object.add(enemy.line);
-            this.scene.add(enemy.object);
-
-            this.addMeshToWorld(enemy.object, 20);
+          enemies.forEach((enemy) => {
+            this.addMeshToWorld(enemy.object, 130);
+            this.currentRoom.enemies.push(enemy);
           });
 
-          console.log('here1');
-
-
-          setTimeout(() => {
-            this.currentRoom.isGeneratingWave = false;
-          }, 200);
+          this.currentRoom.isGeneratingWave = false;
         } else {
           if (!this.currentRoom.roomCleared && this.currentRoom.isLastRoom) {
             this.currentRoom.roomOpened = true;
@@ -415,12 +468,12 @@ export class Floor {
     }
 
     if (this.gem) {
-      this.gem.rotation.y += 0.03;
+      this.gem.rotation.y += 0.1;
 
       if (this.gemTakeDamage > 0) {
-        this.gem.material.color.set(new Color(0xdd2222));
+        this.gem.material.color.set(0xdd2222);
       } else {
-        this.gem.material.color.set(new Color(0xc1ff));
+        this.gem.material.color.set(0xc1ff);
       }
     }
 
@@ -432,7 +485,7 @@ export class Floor {
       case 0:
         return {
           r: r - 1,
-          c,
+            c,
         };
       case 1:
         return {
@@ -442,7 +495,7 @@ export class Floor {
       case 2:
         return {
           r: r + 1,
-          c,
+            c,
         };
       case 3:
         return {

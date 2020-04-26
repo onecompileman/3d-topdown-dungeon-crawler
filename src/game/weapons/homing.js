@@ -1,7 +1,17 @@
-import { PlayerBullet } from '../game-objects/player-bullet';
-import { Vector2, MathUtils, Vector3 } from 'three';
-import { WeaponTypes } from '../../enums/weapons-types.enum';
-import { angleToVector2 } from '../../utils/angle-to-vector2';
+import {
+  PlayerBullet
+} from '../game-objects/player-bullet';
+import {
+  Vector2,
+  MathUtils,
+  Vector3
+} from 'three';
+import {
+  WeaponTypes
+} from '../../enums/weapons-types.enum';
+import {
+  angleToVector2
+} from '../../utils/angle-to-vector2';
 
 export class Homing {
   constructor() {
@@ -24,7 +34,7 @@ export class Homing {
     this.name = 'homing';
   }
 
-  fire(position, velocity) {
+  fire(position, velocity, objectPoolManager) {
     let bullets = [];
     const spread = Math.PI * 0.75;
 
@@ -47,7 +57,7 @@ export class Homing {
         this.speed + MathUtils.randFloat(0, 4),
         30,
         this.damage,
-        WeaponTypes.HOMING
+        WeaponTypes.HOMING, objectPoolManager
       );
 
       bullets.push(bullet);

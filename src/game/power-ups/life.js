@@ -7,22 +7,10 @@ import {
 } from 'three';
 
 export class Life {
-  constructor(position, plusLife) {
-    const geometry1 = new BoxBufferGeometry(0.85, 0.3, 0.3);
-    const geometry2 = new BoxBufferGeometry(0.3, 0.85, 0.3);
+  constructor(position, plusLife, objectPoolManager) {
+    this.poolItem = objectPoolManager.allocate('life');
 
-    const material = new MeshLambertMaterial({
-      color: 0xce2121,
-      emissive: 0x910000,
-    });
-
-    const mesh1 = new Mesh(geometry1, material);
-    const mesh2 = new Mesh(geometry2, material);
-
-    this.object = new Object3D();
-
-    this.object.add(mesh1);
-    this.object.add(mesh2);
+    this.object = this.poolItem.object;
 
     this.object.position.copy(position.clone());
     this.object.position.y = -1.2;

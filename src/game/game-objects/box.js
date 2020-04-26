@@ -9,14 +9,11 @@ import {
 } from 'three';
 
 export class Box {
-  constructor(position, destructable = true) {
-    const geometry = new BoxBufferGeometry(3.5, 3.5, 3.5);
+  constructor(position, destructable = true, objectPoolManager) {
+    this.poolItem = objectPoolManager.allocate('box');
+    this.object = this.poolItem.object;
 
-    const material = new MeshLambertMaterial({
-      color: destructable ? 0x111111 : 0xfefefe,
-    });
-
-    this.object = new Mesh(geometry, material);
+    this.object.material.color.set(destructable ? 0x111111 : 0xfefefe);
 
     this.object.position.copy(position.clone());
 

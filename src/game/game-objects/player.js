@@ -13,19 +13,31 @@ import {
 
 import * as C from 'cannon';
 
-import { PlayerBullet } from './player-bullet';
-import { WeaponManager } from '../weapon-manager';
-import { WeaponTypes } from '../../enums/weapons-types.enum';
+import {
+  PlayerBullet
+} from './player-bullet';
+import {
+  WeaponManager
+} from '../weapon-manager';
+import {
+  WeaponTypes
+} from '../../enums/weapons-types.enum';
 
 export class Player {
-  constructor(inGameUIBottom) {
+  constructor(inGameUIBottom, objectPoolManager) {
     this.inGameUIBottom = inGameUIBottom;
+
+    this.objectPoolManager = objectPoolManager;
 
     this.weaponManager = new WeaponManager(inGameUIBottom);
 
     const geometry = new TorusBufferGeometry(4, 6.8, 3, 3, 6.3);
-    const material = new MeshBasicMaterial({ color: 0xeeeeee });
-    const lineMaterial = new LineBasicMaterial({ color: 0x00000 });
+    const material = new MeshBasicMaterial({
+      color: 0xeeeeee
+    });
+    const lineMaterial = new LineBasicMaterial({
+      color: 0x00000
+    });
     const line = new Line(geometry, lineMaterial);
 
     this.line = line;
@@ -62,7 +74,9 @@ export class Player {
   }
 
   bindEvents() {
-    window.addEventListener('keydown', ({ key }) => {
+    window.addEventListener('keydown', ({
+      key
+    }) => {
       if (key === 'A' || key === 'a') {
         this.velocity.x = -1;
       } else if (key === 'D' || key === 'd') {
@@ -76,7 +90,9 @@ export class Player {
       }
     });
 
-    window.addEventListener('keyup', ({ key }) => {
+    window.addEventListener('keyup', ({
+      key
+    }) => {
       if (key === 'A' || key === 'a') {
         this.velocity.x = 0;
       }
@@ -152,9 +168,9 @@ export class Player {
 
     if (this.dashCooldown >= 0) {
       const dashCooldown =
-        this.dashCooldown <= 0
-          ? 0
-          : (this.dashCooldown / this.dashCooldownRate) * 100;
+        this.dashCooldown <= 0 ?
+        0 :
+        (this.dashCooldown / this.dashCooldownRate) * 100;
       this.inGameUIBottom.dash = dashCooldown;
     }
 
@@ -180,7 +196,8 @@ export class Player {
 
       const bullets = this.weaponManager.fire(
         new Vector3(bulletPos.x, this.object.position.y, bulletPos.y),
-        new Vector3(bulletVel.x, 0, bulletVel.y)
+        new Vector3(bulletVel.x, 0, bulletVel.y),
+        this.objectPoolManager
       );
 
       this.onFire(bullets);

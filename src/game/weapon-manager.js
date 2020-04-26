@@ -1,9 +1,21 @@
-import { Pistol } from './weapons/pistol';
-import { Rifle } from './weapons/rifle';
-import { WeaponTypes } from '../enums/weapons-types.enum';
-import { Shotgun } from './weapons/shotgun';
-import { Tesla } from './weapons/tesla';
-import { Homing } from './weapons/homing';
+import {
+  Pistol
+} from './weapons/pistol';
+import {
+  Rifle
+} from './weapons/rifle';
+import {
+  WeaponTypes
+} from '../enums/weapons-types.enum';
+import {
+  Shotgun
+} from './weapons/shotgun';
+import {
+  Tesla
+} from './weapons/tesla';
+import {
+  Homing
+} from './weapons/homing';
 
 export class WeaponManager {
   constructor(inGameUIBottom) {
@@ -48,7 +60,7 @@ export class WeaponManager {
     this.updateActiveWeaponUI();
   }
 
-  fire(position, velocity) {
+  fire(position, velocity, objectPoolManager) {
     if (this.activeWeapon.canFire()) {
       if (!this.activeWeapon.isInfinite) {
         const weaponState = {
@@ -59,7 +71,7 @@ export class WeaponManager {
         this.inGameUIBottom[this.activeWeapon.name] = weaponState;
       }
 
-      return this.activeWeapon.fire(position, velocity);
+      return this.activeWeapon.fire(position, velocity, objectPoolManager);
     }
 
     return null;

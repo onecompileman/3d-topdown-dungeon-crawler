@@ -1,6 +1,13 @@
-import { PlayerBullet } from '../game-objects/player-bullet';
-import { Vector2, MathUtils } from 'three';
-import { WeaponTypes } from '../../enums/weapons-types.enum';
+import {
+  PlayerBullet
+} from '../game-objects/player-bullet';
+import {
+  Vector2,
+  MathUtils
+} from 'three';
+import {
+  WeaponTypes
+} from '../../enums/weapons-types.enum';
 
 export class Tesla {
   constructor() {
@@ -21,14 +28,14 @@ export class Tesla {
     this.name = 'tesla';
   }
 
-  fire(position, velocity) {
+  fire(position, velocity, objectPoolManager) {
     const bullet = new PlayerBullet(
       position.clone(),
       velocity.clone(),
       this.speed,
       this.maxDistance,
       this.damage,
-      WeaponTypes.TESLA
+      WeaponTypes.TESLA, objectPoolManager
     );
 
     this.bullets--;

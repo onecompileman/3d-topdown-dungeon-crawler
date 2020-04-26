@@ -1,0 +1,70 @@
+body {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+main {
+  height: 100%;
+  width: 100%;
+}
+
+#mainCanvas {
+  height: 100%;
+  width: 100%;
+}
+
+in-game-ui-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  height: 60px;
+  width: 100%;
+}
+
+in-game-map-ui {
+  position: absolute;
+  z-index: 999;
+  top: 80px;
+  left: 10px;
+}
+
+in-game-ui-bottom {
+  position: absolute;
+  bottom: 0;
+  height: 80px;
+  left: 0;
+  z-index: 999;
+  width: 100%;
+}
+
+main-menu,
+loading-screen,
+load-game,
+about-screen,
+pause-screen,
+level-select,
+floor-cleared,
+are-you-sure {
+  position: absolute;
+  bottom: 0;
+  height: 100vh;
+  left: 0;
+  z-index: 999;
+  width: 100%;
+}
+
+in-game-ui-bottom,
+in-game-map-ui,
+in-game-ui-top,
+main-menu,
+about-screen,
+load-game,
+pause-screen,
+level-select,
+floor-cleared,
+are-you-sure {
+  display: none;
+}

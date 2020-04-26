@@ -7,8 +7,12 @@ import {
   IcosahedronBufferGeometry,
   Vector3,
 } from 'three';
-import { WeaponTypes } from '../../enums/weapons-types.enum';
-import { Quaternion } from 'cannon';
+import {
+  WeaponTypes
+} from '../../enums/weapons-types.enum';
+import {
+  Quaternion
+} from 'cannon';
 
 export class PlayerBullet {
   constructor(
@@ -17,10 +21,13 @@ export class PlayerBullet {
     speed,
     maxDistance,
     damage = 1,
-    type = WeaponTypes.PISTOL
+    type = WeaponTypes.PISTOL,
+    objectPoolManager
   ) {
     this.damage = damage;
     this.type = type;
+
+    this.objectPoolManager = objectPoolManager;
 
     this.createMesh();
 
@@ -33,8 +40,7 @@ export class PlayerBullet {
     this.maxDistance = maxDistance;
     this.distanceTravelled = 0;
     this.isCollided = false;
-    this.object.rotation.y =
-      -new Vector2(velocity.x, velocity.z).angle() + Math.PI / 2;
+    this.object.rotation.y = -new Vector2(velocity.x, velocity.z).angle() + Math.PI / 2;
 
     this.bBox = new Box3().setFromObject(this.object);
 
@@ -46,57 +52,27 @@ export class PlayerBullet {
 
     switch (this.type) {
       case WeaponTypes.TESLA:
-        geometry = new IcosahedronBufferGeometry(0.5, 0);
-        material = new MeshLambertMaterial({
-          color: 0x107758,
-          emissive: 0xba77,
-          emissiveIntensity: 1,
-        });
-
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('tesla');
+        this.object = this.poolItem.object;
 
         break;
       case WeaponTypes.RIFLE:
-        geometry = new BoxBufferGeometry(0.14, 0.14, 0.5);
-        material = new MeshLambertMaterial({
-          color: 0x4499ff,
-          emissive: 0x55aaff,
-          emissiveIntensity: 1,
-        });
-
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('rifle');
+        this.object = this.poolItem.object;
         break;
       case WeaponTypes.SHOTGUN:
-        geometry = new BoxBufferGeometry(0.14, 0.14, 0.45);
-        material = new MeshLambertMaterial({
-          color: 0xff6666,
-          emissive: 0xff3333,
-          emissiveIntensity: 2,
-        });
-
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('shotgun');
+        this.object = this.poolItem.object;
         break;
 
       case WeaponTypes.HOMING:
-        geometry = new BoxBufferGeometry(0.22, 0.22, 0.55);
-        material = new MeshLambertMaterial({
-          color: 0xdedede,
-          emissive: 0xff22ff,
-          emissiveIntensity: 1,
-        });
-
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('homing');
+        this.object = this.poolItem.object;
         break;
 
       default:
-        geometry = new BoxBufferGeometry(0.15, 0.15, 0.45);
-        material = new MeshLambertMaterial({
-          color: 0xef9b38,
-          emissive: 0xe56c38,
-          emissiveIntensity: 1,
-        });
-
-        this.object = new Mesh(geometry, material);
+        this.poolItem = this.objectPoolManager.allocate('pistol');
+        this.object = this.poolItem.object;
         break;
     }
   }
@@ -116,8 +92,7 @@ export class PlayerBullet {
 
       this.velocity.add(steer);
 
-      const yAngle =
-        -new Vector2(this.velocity.x, this.velocity.z).angle() + Math.PI / 2;
+      const yAngle = -new Vector2(this.velocity.x, this.velocity.z).angle() + Math.PI / 2;
       const xAngle = new Vector2(this.velocity.z, this.velocity.y).angle();
 
       this.object.rotation.set(0, yAngle, xAngle);

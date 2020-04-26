@@ -1,13 +1,24 @@
-import { Room } from './room';
-import { Vector3, Box3 } from 'three';
+import {
+  Room
+} from './room';
+import {
+  Vector3,
+  Box3
+} from 'three';
 import * as C from 'cannon';
-import { EnemyTypes } from '../enums/enemy-types.enum';
+import {
+  EnemyTypes
+} from '../enums/enemy-types.enum';
+import {
+  disposeGeometry
+} from '../utils/dispose-geometry';
 
 export class MainMenuFloor {
   constructor(options) {
     this.player = options.player;
     this.scene = options.scene;
     this.world = options.world;
+    this.objectPoolManager = options.objectPoolManager;
     this.room = null;
   }
 
@@ -35,14 +46,13 @@ export class MainMenuFloor {
         enemyWaves: [
           Array(3).fill(EnemyTypes.FOLLOW_ENEMY_1),
           Array(3).fill(EnemyTypes.FOLLOW_ENEMY_1),
-          [
-            {
-              type: EnemyTypes.FOLLOW_ENEMY_1,
-              lifeToAdd: 20,
-            },
-          ],
+          [{
+            type: EnemyTypes.FOLLOW_ENEMY_1,
+            lifeToAdd: 20,
+          }, ],
         ],
       },
+      objectPoolManager: this.objectPoolManager,
       position,
       roomIndex,
       pathWays,
@@ -76,40 +86,50 @@ export class MainMenuFloor {
       this.addMeshToWorld(sb);
     });
 
-    this.room.generateBoss();
+    const bosses = this.room.generateBoss();
 
-    this.room.bosses.forEach((boss) => {
+    bosses.forEach((boss) => {
       boss.currentPhase = 2;
-      boss.object.add(boss.line);
-      this.scene.add(boss.object);
 
       this.addMeshToWorld(boss.object, 80);
+
+      this.room.bosses.push(boss);
     });
   }
 
   destroyMainMenuFloor() {
     this.room.powerups.forEach((powerup) => {
+      disposeGeometry(power.object);
+      powerup.object.material.dispose();
       this.scene.remove(powerup.object);
     });
 
     this.room.boxes.forEach((box) => {
+      disposeGeometry(box.object);
+      box.object.material.dispose();
       this.scene.remove(box.object);
       this.world.remove(box.object.body);
     });
 
     this.room.pathWayBlockers.forEach((pW) => {
+      // disposeGeometry(pW);
+      // pW.material.dispose();
       this.world.remove(pW.body);
       this.scene.remove(pW);
     });
 
     this.room.sideBlockers.forEach((pW) => {
+      // disposeGeometry(pW);
+      // pW.material.dispose();
       this.world.remove(pW.body);
       this.scene.remove(pW);
     });
 
     this.room.bosses.forEach((pW) => {
-      this.world.remove(pW.object.body);
-      this.scene.remove(pW.object);
+      // disposeGeometry(pW.object);
+      // pW.object.material.dispose();
+      this.objectPoolManager.free(pW.poolItem);
+      this.objectPoolManager.free(pW.poolItemLine);
     });
   }
 
