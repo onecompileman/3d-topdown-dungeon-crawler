@@ -21,6 +21,6 @@
   "dependencies": {
     "cannon": "^0.6.2",
     "lodash": "^4.17.15",
-    "three": "^0.115.0"
+    "three": "^0.125.0"
   }
 }
